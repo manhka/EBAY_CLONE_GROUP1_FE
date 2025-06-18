@@ -1,0 +1,164 @@
+/* src/assets/css/ProfileScreen.css */
+
+/* General Container */
+.profile-container {
+    padding: 30px 0;
+}
+
+/* Card Styles */
+.profile-card {
+    margin-bottom: 20px;
+    background-color: #ffffff;
+    border: none;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.profile-card-body {
+    padding: 20px;
+}
+
+/* Account Settings */
+.account-settings {
+    padding-bottom: 10px;
+    border-bottom: 1px solid #efefef;
+}
+
+/* User Profile */
+.user-profile {
+    margin: 0 0 10px 0;
+    padding-bottom: 10px;
+    text-align: center;
+}
+
+.user-avatar {
+    width: 90px;
+    height: 90px;
+    margin: 0 auto 10px auto;
+    border-radius: 50%;
+    overflow: hidden;
+    box-shadow: 0 0 0 5px rgba(0, 0, 0, 0.1);
+}
+
+.user-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.user-name {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+/* About Section */
+.about {
+    margin-top: 20px;
+}
+
+.about h5 {
+    margin: 0 0 5px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+}
+
+.about p {
+    font-size: 14px;
+    line-height: 20px;
+    color: #555;
+}
+
+/* Form Styles */
+.form-group-custom {
+    /* Using a custom class to avoid conflicts with Bootstrap's form-group */
+    margin-bottom: 1rem;
+}
+
+.form-label-custom {
+    /* Using a custom class */
+    margin-bottom: .5rem;
+    display: block;
+    color: #555;
+    font-weight: 600;
+}
+
+.form-control-custom {
+    /* Using a custom class */
+    display: block;
+    width: 100%;
+    padding: .375rem .75rem;
+    font-size: 1rem;
+    line-height: 1.5;
+    color: #495057;
+    background-color: #fff;
+    background-clip: padding-box;
+    border: 1px solid #ced4da;
+    border-radius: .25rem;
+    transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out;
+}
+
+.text-danger-custom {
+    /* Using a custom class for consistency */
+    color: #dc3545;
+    font-size: 0.875em;
+    margin-top: .25rem;
+}
+
+/* Button Container */
+.button-container {
+    text-align: right;
+    padding-top: 20px;
+}
+
+/* Buttons */
+.btn-custom {
+    /* Base button style */
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    line-height: 1.5;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+
+.btn-secondary-custom {
+    /* Specific secondary button style */
+    color: #fff;
+    background-color: #6c757d;
+    border-color: #6c757d;
+    margin-right: 0.5rem;
+}
+
+.btn-primary-custom {
+    /* Specific primary button style */
+    color: #fff;
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+/* Primary heading color */
+.text-primary-custom {
+    color: #007bff;
+    margin-bottom: 0.5rem;
+}
+
+/* Messages */
+.text-info-custom {
+    color: #17a2b8;
+}
+
+.text-success-custom {
+    color: #28a745;
+}
+
+/* Form check for checkbox */
+.form-check-custom {
+    margin-bottom: 0.5rem;
+}
+
+.form-check-input-custom {
+    margin-right: 0.5em;
+}
+
