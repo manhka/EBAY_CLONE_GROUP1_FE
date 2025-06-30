@@ -1,118 +1,103 @@
 import { Formik, Field, Form, ErrorMessage } from "formik";
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom"; // Make sure you import useNavigate
+import { useNavigate } from "react-router-dom";
+import * as Yup from "yup";
 
-// No need for CheckEmailModal anymore if we're redirecting
-// import CheckEmailModal from "./CheckEmailModal";
+const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:3000";
 
 function RegisterScreen() {
   const [csrfToken, setCsrfToken] = useState("");
   const [loadingCsrf, setLoadingCsrf] = useState(true);
   const [errorCsrf, setErrorCsrf] = useState(null);
-  const navigate = useNavigate(); // Initialize navigate
+  const [errorMessage, setErrorMessage] = useState(null);
+  const navigate = useNavigate();
 
   // --- CSRF Token Fetching ---
+  const fetchCsrfToken = async () => {
+    try {
+      setLoadingCsrf(true);
+      setErrorCsrf(null);
+      const response = await axios.get(`${API_BASE_URL}/api/csrf-token`, {
+        withCredentials: true,
+      });
+      setCsrfToken(response.data.csrfToken);
+      setLoadingCsrf(false);
+    } catch (error) {
+      console.error("Error fetching CSRF Token:", error);
+      setErrorCsrf("Failed to load the form. Please try again.");
+      setLoadingCsrf(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchCsrfToken = async () => {
-      try {
-        const response = await axios.get(
-          "http://localhost:3000/api/csrf-token", // Double-check your backend port!
-          {
-            withCredentials: true, // Essential for sending/receiving cookies
-          }
-        );
-        setCsrfToken(response.data.csrfToken);
-        setLoadingCsrf(false);
-      } catch (error) {
-        console.error("Error fetching CSRF Token:", error);
-        setErrorCsrf("Failed to load the form. Please try again later.");
-        setLoadingCsrf(false);
-      }
-    };
     fetchCsrfToken();
   }, []);
 
-  // --- Form Validation ---
-  const validate = (values) => {
-    const errors = {};
-
-    if (!values.name) {
-      errors.name = "Your name is required";
-    } else if (values.name.length < 3) {
-      errors.name = "Your name must be at least 3 characters";
-    } else if (values.name.length > 50) {
-      errors.name = "Your name must be less than 50 characters";
-    }
-
-    if (!values.email) {
-      errors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S/.test(values.email)) {
-      errors.email = "Invalid email address";
-    }
-
-    if (!values.password) {
-      errors.password = "Password is required";
-    } else if (values.password.length < 6) {
-      errors.password = "Password must be at least 6 characters";
-    }
-
-    if (!values.confirmPassword) {
-      errors.confirmPassword = "Please confirm your password";
-    } else if (values.confirmPassword !== values.password) {
-      errors.confirmPassword = "Passwords must match";
-    }
-
-    return errors;
-  };
+  // --- Form Validation with Yup ---
+  const validationSchema = Yup.object({
+    username: Yup.string()
+      .min(3, "Your username must be at least 3 characters")
+      .max(50, "Your username must be less than 50 characters")
+      .required("Your username is required"),
+    email: Yup.string()
+      .email("Invalid email address")
+      .required("Email is required"),
+    password: Yup.string()
+      .min(6, "Password must be at least 6 characters")
+      .required("Password is required"),
+    confirmPassword: Yup.string()
+      .oneOf([Yup.ref("password"), null], "Passwords must match")
+      .required("Please confirm your password"),
+  });
 
   // --- Form Submission Handler ---
   const handleSubmit = async (values, { setSubmitting, resetForm }) => {
-    console.log("Submitting form data:", values);
-
-    if (!csrfToken) {
-      alert("Error: CSRF Token missing. Please reload the page.");
+    if (
+      !csrfToken ||
+      typeof csrfToken !== "string" ||
+      csrfToken.trim() === ""
+    ) {
+      setErrorMessage(
+        "Error: CSRF Token missing or invalid. Please reload the page."
+      );
       setSubmitting(false);
       return;
     }
 
     try {
       const response = await axios.post(
-        "http://localhost:3000/api/auth/register", // Double-check your backend port!
+        `${API_BASE_URL}/api/auth/register`,
         values,
         {
           headers: {
             "Content-Type": "application/json",
-            "X-CSRF-Token": csrfToken, // Send CSRF Token in header
+            "X-CSRF-Token": csrfToken,
           },
-          withCredentials: true, // Essential for sending session cookies
+          withCredentials: true,
         }
       );
       console.log("Registration successful:", response.data);
       resetForm();
-
-      // --- PRIMARY CHANGE HERE: Redirect directly ---
+      setErrorMessage(null);
       navigate("/verify-pin", { state: { email: values.email } });
     } catch (error) {
       console.error("Error submitting registration request:", error);
-      if (error.response) {
-        console.error("Error data from server:", error.response.data);
-        alert(
-          `Registration failed: ${
-            error.response.data.msg ||
-            error.response.data.message ||
-            "Unknown error from server"
-          }`
-        );
+      let errorMsg = "Unknown error from server";
+      if (error.response && error.response.data) {
+        if (typeof error.response.data === "string") {
+          errorMsg = error.response.data;
+        } else {
+          errorMsg =
+            error.response.data.msg || error.response.data.message || errorMsg;
+        }
       } else if (error.request) {
-        console.error("No response received from server:", error.request);
-        alert(
-          "Could not connect to the server. Please check your internet connection."
-        );
+        errorMsg =
+          "Could not connect to the server. Please check your internet connection.";
       } else {
-        console.error("Request setup error:", error.message);
-        alert("An error occurred during registration. Please try again.");
+        errorMsg = "An error occurred during registration. Please try again.";
       }
+      setErrorMessage(errorMsg);
     } finally {
       setSubmitting(false);
     }
@@ -122,12 +107,9 @@ function RegisterScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
-  const toggleConfirmPasswordVisibility = () => {
+  const togglePasswordVisibility = () => setShowPassword(!showPassword);
+  const toggleConfirmPasswordVisibility = () =>
     setShowConfirmPassword(!showConfirmPassword);
-  };
 
   // --- Conditional Rendering for Loading/Error States ---
   if (loadingCsrf) {
@@ -148,11 +130,8 @@ function RegisterScreen() {
       <section className="vh-100 d-flex justify-content-center align-items-center">
         <div className="alert alert-danger text-center" role="alert">
           {errorCsrf}
-          <button
-            className="btn btn-link mt-2"
-            onClick={() => window.location.reload()}
-          >
-            Reload Page
+          <button className="btn btn-primary mt-2" onClick={fetchCsrfToken}>
+            Try Again
           </button>
         </div>
       </section>
@@ -173,14 +152,23 @@ function RegisterScreen() {
                       <i className="fas fa-user-plus me-3"></i> Sign up
                     </p>
 
+                    {errorMessage && (
+                      <div
+                        className="alert alert-danger text-center"
+                        role="alert"
+                      >
+                        {errorMessage}
+                      </div>
+                    )}
+
                     <Formik
                       initialValues={{
-                        name: "",
+                        username: "",
                         email: "",
                         password: "",
                         confirmPassword: "",
                       }}
-                      validate={validate}
+                      validationSchema={validationSchema}
                       onSubmit={handleSubmit}
                     >
                       {({ touched, errors, isSubmitting }) => (
@@ -191,17 +179,17 @@ function RegisterScreen() {
                             <div className="form-outline flex-fill mb-0">
                               <Field
                                 type="text"
-                                id="nameField"
+                                id="usernameField"
                                 className={`form-control ${
-                                  touched.name && errors.name
+                                  touched.username && errors.username
                                     ? "is-invalid"
                                     : ""
                                 }`}
-                                name="name"
-                                placeholder="Your Name"
+                                name="username"
+                                placeholder="Enter Username"
                               />
                               <ErrorMessage
-                                name="name"
+                                name="username"
                                 component="div"
                                 className="invalid-feedback"
                               />
@@ -253,17 +241,15 @@ function RegisterScreen() {
                                 onClick={togglePasswordVisibility}
                                 className={`fas ${
                                   showPassword ? "fa-eye" : "fa-eye-slash"
-                                } position-absolute end-0 translate-middle-y ${
-                                  touched.password && errors.password
-                                    ? "me-5"
-                                    : "me-3"
-                                }`}
+                                } position-absolute`}
                                 style={{
                                   cursor: "pointer",
-                                  top:
+                                  top: "50%",
+                                  transform: "translateY(-50%)",
+                                  right:
                                     touched.password && errors.password
-                                      ? "30%"
-                                      : "50%",
+                                      ? "2.5rem"
+                                      : "1rem",
                                 }}
                               ></i>
                             </div>
@@ -295,19 +281,16 @@ function RegisterScreen() {
                                   showConfirmPassword
                                     ? "fa-eye"
                                     : "fa-eye-slash"
-                                } position-absolute end-0 translate-middle-y ${
-                                  touched.confirmPassword &&
-                                  errors.confirmPassword
-                                    ? "me-5"
-                                    : "me-3"
-                                }`}
+                                } position-absolute`}
                                 style={{
                                   cursor: "pointer",
-                                  top:
+                                  top: "50%",
+                                  transform: "translateY(-50%)",
+                                  right:
                                     touched.confirmPassword &&
                                     errors.confirmPassword
-                                      ? "30%"
-                                      : "50%",
+                                      ? "2.5rem"
+                                      : "1rem",
                                 }}
                               ></i>
                             </div>

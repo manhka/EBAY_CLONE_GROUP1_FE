@@ -1,3 +1,4 @@
+// apiInterceptor.js
 import axios from "axios";
 
 const apiInterceptor = axios.create({
@@ -8,6 +9,14 @@ const apiInterceptor = axios.create({
 // Variables to manage token refreshing and request queue
 let isRefreshing = false;
 let failedQueue = [];
+
+// --- CSRF Token Management ---
+let csrfToken = null; // This variable will hold the CSRF token
+export const setCsrfToken = (token) => {
+  // Function to update the CSRF token
+  csrfToken = token;
+};
+// --- End CSRF Token Management ---
 
 // Function to process queued requests
 const processQueue = (error, token = null) => {
@@ -21,30 +30,68 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
-// --- Interceptor Configuration Starts Here ---
+// --- Request Interceptor: Attach CSRF Token (for non-GET requests) ---
+apiInterceptor.interceptors.request.use(
+  (config) => {
+    console.log("Request Interceptor: config", config); // Log cấu hình yêu cầu
+
+    // Only add CSRF token for methods that modify data
+    if (
+      config.method !== "get" &&
+      config.method !== "head" &&
+      config.method !== "options"
+    ) {
+      if (csrfToken) {
+        config.headers["X-CSRF-Token"] = csrfToken; // Attach the CSRF token
+      } else {
+        // If CSRF token is not available, you might want to:
+        // 1. Log a warning (as you did previously)
+        // 2. Prevent the request (by throwing an error) if it's critical
+        // 3. Try to fetch the CSRF token (less ideal here, better at app start)
+        console.warn(
+          "CSRF Token not available. This request might be blocked by CSRF protection."
+        );
+        // Optionally, throw an error to halt the request if CSRF is mandatory
+        // return Promise.reject(new Error("CSRF token is missing."));
+      }
+    }
+    // No need to manually add JWT if it's in an httpOnly cookie.
+    // If JWT were in local storage, you would add:
+    // const accessToken = localStorage.getItem('accessToken');
+    // if (accessToken) {
+    //   config.headers.Authorization = `Bearer ${accessToken}`;
+    // }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// --- Response Interceptor: Handle Token Refresh ---
 apiInterceptor.interceptors.response.use(
   (response) => {
+    console.log("Response Interceptor: response", response); // Log phản hồi thành công
+
     return response;
-  }, // If the response is successful, return it immediately
+  },
   async (error) => {
     const originalRequest = error.config;
 
-    // Check if the error is 401, if it's an expired AccessToken, and if it hasn't been retried yet
     if (
       error.response &&
       error.response.status === 401 &&
-      error.response.data.msg === "AccessTokenExpired" && // Specific error code from the backend
-      !originalRequest._retry // Ensure it's retried only once
+      error.response.data.msg === "NoAccessTokenInCookie" &&
+      !originalRequest._retry
     ) {
-      originalRequest._retry = true; // Mark the request as retried
+      originalRequest._retry = true;
 
-      // If a refresh process is already ongoing, add the request to the queue
       if (isRefreshing) {
         return new Promise(function (resolve, reject) {
           failedQueue.push({ resolve, reject });
         })
           .then(() => {
-            // No token needed here if using httpOnly cookie
+            // No token to manually attach here if using httpOnly cookie
             return apiInterceptor(originalRequest);
           })
           .catch((err) => {
@@ -52,46 +99,53 @@ apiInterceptor.interceptors.response.use(
           });
       }
 
-      isRefreshing = true; // Set the refreshing flag
+      isRefreshing = true;
 
       return new Promise(async (resolve, reject) => {
         try {
-          // Call the token refresh API
+          console.log("go heterererere==========>");
+          // This call will automatically send the httpOnly Refresh Token cookie
           const refreshResponse = await axios.post(
-            "http://localhost:3000/api/auth/refresh-token", // Backend's refresh token endpoint
-            {}, // Empty body
-            { withCredentials: true } // Important: Send refreshToken cookie
+            "http://localhost:3000/api/auth/refresh-token",
+            {},
+            { withCredentials: true }
           );
 
-          // If refresh is successful
-          isRefreshing = false;
-          processQueue(null); // Resolve all queued requests
+          // Assuming backend sets new httpOnly Access Token cookie
+          // No need to manually set a header here if using httpOnly cookies
 
-          // Retry the original request. The browser will automatically attach the new accessToken.
+          isRefreshing = false;
+          processQueue(null); // All queued requests can now proceed
+
+          // Retry the original request with the new (automatically attached) access token
           resolve(apiInterceptor(originalRequest));
         } catch (refreshError) {
           isRefreshing = false;
-          processQueue(refreshError, null); // Reject all queued requests with the error
+          processQueue(refreshError, null);
           console.error(
             "Error refreshing token:",
             refreshError.response?.data?.msg || refreshError.message
           );
 
-          window.location.href = "/login";
-          reject(refreshError); // Reject the promise of the original request
+          // Redirect to login if refresh fails (e.g., refresh token expired/invalid)
+          // You might use React Router's navigate here instead of window.location.href
+          // window.location.href = "/login";
+          reject(refreshError);
         }
       });
     }
 
+    // Handle other 401 errors (e.g., invalid token, not expired)
     if (error.response && error.response.status === 401) {
       console.error(
-        "Authentication error (not expiration):",
-        error.response.data.msg
+        "Authentication error (not token expiration):",
+        error.response.data.msg || error.message
       );
+      // Redirect to login for other 401s if desired
       // window.location.href = '/login';
     }
 
-    return Promise.reject(error); // Return the original error
+    return Promise.reject(error);
   }
 );
 
