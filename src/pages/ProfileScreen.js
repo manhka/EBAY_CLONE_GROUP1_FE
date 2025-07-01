@@ -1,39 +1,20 @@
 import React, { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
-import apiClient from "../services/apiInterceptor"; // Import your configured Axios instance
-import useCsrfToken from "../hooks/useCsrfToken";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
 import axios from "axios";
-import "../assets/css/ProfileStyle.css"; // Make sure this path is correct
+import useCsrfToken from "../hooks/useCsrfToken";
+import apiInterceptor from "../services/apiInterceptor";
+import "../assets/css/ProfileStyle.css";
 
 const ProfileScreen = () => {
+  const navigate = useNavigate();
   const location = useLocation();
-  const BACKEND_BASE_URL = "http://localhost:3000";
+  const { csrfToken, loadingCsrf, errorCsrf, fetchCsrfToken } = useCsrfToken();
 
-  // ... other states for your component
-
-  // Use the custom hook to handle CSRF token fetching
-  const { csrfLoading, csrfError } = useCsrfToken();
-
-  // --- States for the component's UI and data ---
-  const [message, setMessage] = useState("");
-  // ... other states for profile data, loading, error, success messages ...
-
-  // Use the custom hook to handle CSRF token fetching
-
-  useEffect(() => {
-    // Handle success message from location.state (unrelated to CSRF but from your original code)
-    if (location.state && location.state.successMessage) {
-      setMessage(location.state.successMessage);
-      const timer = setTimeout(() => {
-        setMessage("");
-        window.history.replaceState({}, document.title);
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [location.state]);
-
+  // States for UI and data
+  const [successMessage, setSuccessMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
   const [initialValues, setInitialValues] = useState({
     fullName: "",
     phone: "",
@@ -42,36 +23,129 @@ const ProfileScreen = () => {
     state: "",
     country: "",
     isDefault: false,
-    profilePicture: "", // This will hold the URL or the File object
+    avatar: "",
     username: "",
-    firstName: "",
-    lastName: "",
-    organizationName: "",
-    location: "",
     emailAddress: "",
-    birthday: "", // Will be "yyyy-MM-dd" string for input
+    birthday: "",
   });
   const [profileExists, setProfileExists] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
 
-  // Helper function to format ISO string to YYYY-MM-DD for date input
+  // Helper functions for date formatting
   const formatIsoToYYYYMMDD = (isoString) => {
     if (!isoString) return "";
     return isoString.substring(0, 10);
   };
 
-  // Helper function to format YYYY-MM-DD to ISO string for backend submission
   const formatYYYYMMDDToISO = (yyyyMmDdString) => {
     if (!yyyyMmDdString) return null;
-    // Creating a new Date object from "YYYY-MM-DD" will usually result in
-    // midnight UTC of that date, which is what Mongoose expects for Date type.
     return new Date(yyyyMmDdString).toISOString();
   };
 
+  // Handle successMessage from location.state
+  useEffect(() => {
+    if (location.state?.successMessage) {
+      setSuccessMessage(location.state.successMessage);
+      const timer = setTimeout(() => {
+        setSuccessMessage("");
+        window.history.replaceState({}, document.title);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [location.state]);
+
+  // Handle logout event from apiInterceptor
+  useEffect(() => {
+    const handleLogout = () => {
+      navigate("/login");
+    };
+    window.addEventListener("auth:logout", handleLogout);
+    return () => window.removeEventListener("auth:logout", handleLogout);
+  }, [navigate]);
+
+  // Fetch user profile
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        setLoading(true);
+        setErrorMessage(null);
+
+        const response = await apiInterceptor.get("/user-profile/", {
+          withCredentials: true,
+        });
+
+        const data = response.data.profile;
+        console.log("Fetched profile data:", data);
+
+        setInitialValues({
+          fullName: data.fullName || "",
+          phone: data.phone || "",
+          street: data.street || "",
+          city: data.city || "",
+          state: data.state || "",
+          country: data.country || "",
+          isDefault: data.isDefault || false,
+          avatar:
+            data.avatar || "http://bootdey.com/img/Content/avatar/avatar1.png",
+          username: data.username || "",
+          emailAddress: data.email || "",
+          birthday: formatIsoToYYYYMMDD(data.birthday),
+        });
+        setProfileExists(!!data.fullName);
+      } catch (err) {
+        if (axios.isAxiosError(err) && err.response) {
+          if (err.response.status === 404) {
+            console.log(
+              "No profile found for this user, preparing for creation."
+            );
+            setProfileExists(false);
+            setInitialValues({
+              fullName: "",
+              phone: "",
+              street: "",
+              city: "",
+              state: "",
+              country: "",
+              isDefault: false,
+              avatar: "http://bootdey.com/img/Content/avatar/avatar1.png",
+              username: "",
+              emailAddress: "",
+              birthday: "",
+            });
+          } else if (
+            err.response.status === 401 ||
+            err.response.status === 403
+          ) {
+            console.error(
+              "Authentication error:",
+              err.response.data.msg || "Unauthorized."
+            );
+            setErrorMessage(
+              "Your session has expired or you do not have access. Please log in again."
+            );
+            navigate("/login");
+          } else {
+            console.error("Error fetching user profile:", err.response.data);
+            setErrorMessage(
+              err.response.data.msg || "Failed to load profile data."
+            );
+          }
+        } else {
+          console.error("Network or unexpected error:", err);
+          setErrorMessage(
+            "Cannot connect to the server. Please try again later."
+          );
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserProfile();
+  }, [navigate]);
+
+  // Validation schema
   const validationSchema = Yup.object().shape({
-    // userId: Yup.string().required("User ID is required"), // userId should ideally come from auth context, not a form field for direct user input
     fullName: Yup.string()
       .required("Full Name is required")
       .min(2, "Full Name must be at least 2 characters")
@@ -116,14 +190,13 @@ const ProfileScreen = () => {
       .max(50, "Country name cannot exceed 50 characters.")
       .matches(/^[a-zA-Z\s]+$/, "Country can only contain letters and spaces."),
     isDefault: Yup.boolean().required("Default status is required"),
-
-    profilePicture: Yup.mixed()
+    avatar: Yup.mixed()
       .nullable()
       .test(
         "fileFormat",
         "Unsupported Format (Only JPG, PNG, GIF allowed)",
         (value) => {
-          if (!value || typeof value === "string") return true; // Allow null/empty or existing URL string
+          if (!value || typeof value === "string") return true;
           return (
             value instanceof File &&
             ["image/jpeg", "image/png", "image/gif"].includes(value.type)
@@ -131,53 +204,29 @@ const ProfileScreen = () => {
         }
       )
       .test("fileSize", "File too large (Max 5 MB)", (value) => {
-        if (!value || typeof value === "string") return true; // Allow null/empty or existing URL string
-        return value instanceof File && value.size <= 5 * 1024 * 1024; // 5MB limit
+        if (!value || typeof value === "string") return true;
+        return value instanceof File && value.size <= 5 * 1024 * 1024;
       }),
-
-    // New fields
     username: Yup.string()
       .max(50, "Username cannot exceed 50 characters.")
       .notRequired(),
-    firstName: Yup.string()
-      .max(50, "First name cannot exceed 50 characters.")
-      .notRequired(),
-    lastName: Yup.string()
-      .max(50, "Last name cannot exceed 50 characters.")
-      .notRequired(),
-    organizationName: Yup.string()
-      .max(100, "Organization name cannot exceed 100 characters.")
-      .notRequired(),
-    location: Yup.string()
-      .max(100, "Location cannot exceed 100 characters.")
-      .notRequired(),
     emailAddress: Yup.string().email("Invalid email address").notRequired(),
-    birthday: Yup.string() // It's a string from the input (yyyy-MM-dd)
-      .nullable() // Allows it to be empty initially
+    birthday: Yup.string()
+      .nullable()
       .test("is-valid-date", "Invalid date format or date.", (value) => {
-        if (!value) return true; // Allow empty birthday if not required
-        return !isNaN(new Date(value).getTime()); // Check if it's a valid date string
+        if (!value) return true;
+        return !isNaN(new Date(value).getTime());
       })
       .test(
         "age-validation",
         "You must be between 16 and 100 years old.",
         (value) => {
-          if (!value) return true; // Allow empty birthday
+          if (!value) return true;
           const birthDate = new Date(value);
-
-          // Check if the date object itself is valid
-          if (isNaN(birthDate.getTime())) {
-            return false; // Invalid date string passed, so it's not a valid age
-          }
-
-          const today = new Date();
-          today.setHours(0, 0, 0, 0); // Normalize today for comparison
-
-          // For accurate age, set birthDate to the start of its day (local time)
-          // This is crucial because new Date("YYYY-MM-DD") is often UTC midnight,
-          // which can be the previous day in local timezones, affecting age by a day.
+          if (isNaN(birthDate.getTime())) return false;
           birthDate.setHours(0, 0, 0, 0);
-
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
           let age = today.getFullYear() - birthDate.getFullYear();
           const m = today.getMonth() - birthDate.getMonth();
           if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
@@ -188,122 +237,46 @@ const ProfileScreen = () => {
       ),
   });
 
+  // Helper function to get image URL
   const getImageUrl = (avatarValue) => {
-    let imageUrl;
+    const BACKEND_BASE_URL =
+      process.env.REACT_APP_API_URL || "http://localhost:3000";
     if (avatarValue instanceof File) {
-      imageUrl = URL.createObjectURL(avatarValue);
+      return URL.createObjectURL(avatarValue);
     } else if (typeof avatarValue === "string" && avatarValue) {
-      imageUrl = avatarValue.startsWith("/")
+      return avatarValue.startsWith("/")
         ? `${BACKEND_BASE_URL}${avatarValue}`
         : avatarValue;
-    } else {
-      imageUrl = "http://bootdey.com/img/Content/avatar/avatar1.png";
+    }
+    return "http://bootdey.com/img/Content/avatar/avatar1.png";
+  };
+
+  // Form submission handler
+  const onSubmit = async (values, { setSubmitting, resetForm }) => {
+    if (
+      !csrfToken ||
+      typeof csrfToken !== "string" ||
+      csrfToken.trim() === ""
+    ) {
+      setErrorMessage(
+        "Error: CSRF Token missing or invalid. Please try again."
+      );
+      setSubmitting(false);
+      return;
     }
 
-    return imageUrl;
-  };
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const response = await apiClient.get(`/user-profile/`, {
-          withCredentials: true,
-        });
-
-        const data = response.data.profile;
-        console.log("Fetched profile data:", data); // Log the full data to inspect
-
-        setInitialValues({
-          fullName: data.fullName || "",
-          phone: data.phone || "",
-          street: data.street || "",
-          city: data.city || "",
-          state: data.state || "",
-          country: data.country || "",
-          isDefault: data.isDefault || false,
-          avatar:
-            data.avatar || "http://bootdey.com/img/Content/avatar/avatar1.png",
-          username: data.username || "",
-          emailAddress: data.email || "",
-          birthday: formatIsoToYYYYMMDD(data.birthday), // Format for the date input
-        });
-        if (data.fullName) {
-          setProfileExists(true);
-        } else {
-          setProfileExists(false);
-        }
-      } catch (err) {
-        if (axios.isAxiosError(err) && err.response) {
-          if (err.response.status === 404) {
-            console.log(
-              "No profile found for this user, preparing for creation."
-            );
-            setProfileExists(false);
-            setInitialValues({
-              fullName: "",
-              phone: "",
-              street: "",
-              city: "",
-              state: "",
-              country: "",
-              isDefault: false,
-              profilePicture:
-                "http://bootdey.com/img/Content/avatar/avatar1.png",
-              username: "",
-              firstName: "",
-              lastName: "",
-              organizationName: "",
-              location: "",
-              emailAddress: "",
-              birthday: "",
-            });
-          } else if (
-            err.response.status === 401 ||
-            err.response.status === 403
-          ) {
-            console.error(
-              "Authentication error:",
-              err.response.data.msg || "Unauthorized."
-            );
-            setError(
-              "Your session has expired or you do not have access. Please log in again."
-            );
-            // navigate('/login'); // Redirect to login page
-          } else {
-            console.error("Error fetching user profile:", err.response.data);
-            setError(err.response.data.msg || "Failed to load profile data.");
-          }
-        } else {
-          console.error("Network or unexpected error:", err);
-          setError("Cannot connect to the server. Please try again later.");
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUserProfile();
-  }, []);
-
-  const onSubmit = async (values, { setSubmitting, resetForm }) => {
     setSubmitting(true);
-    setError(null);
-    setSuccess(null);
+    setErrorMessage("");
+    setSuccessMessage("");
     console.log("Submitting form data", values);
 
     const formData = new FormData();
-
-    // Append all form values
     for (const key in values) {
-      // Exclude profilePicture if it's an existing URL, only append if it's a new File
-      if (key === "profilePicture") {
+      if (key === "avatar") {
         if (values[key] instanceof File) {
           formData.append(key, values[key]);
         }
       } else if (key === "birthday") {
-        // Convert birthday from "yyyy-MM-dd" to ISO string for backend if it's not empty
         if (values.birthday) {
           formData.append(key, formatYYYYMMDDToISO(values.birthday));
         }
@@ -315,9 +288,8 @@ const ProfileScreen = () => {
     }
 
     try {
-      const url = `http://localhost:3000/api/user-profile/`;
-
-      const response = await apiClient[profileExists ? "put" : "post"](
+      const url = "/user-profile/";
+      const response = await apiInterceptor[profileExists ? "put" : "post"](
         url,
         formData,
         {
@@ -328,8 +300,7 @@ const ProfileScreen = () => {
         }
       );
 
-      // Handle success message
-      setSuccess(
+      setSuccessMessage(
         profileExists
           ? "Profile updated successfully!"
           : "Profile created successfully!"
@@ -337,12 +308,8 @@ const ProfileScreen = () => {
       setProfileExists(true);
 
       console.log("Server response:", response.data);
-      console.log(`${response.data.profile}`);
       if (response.data.profile) {
         const returnedProfile = response.data.profile;
-        console.log(`${returnedProfile.fullName}`);
-
-        // Construct the new, normalized initial values state based purely on backend response
         const newInitialValuesState = {
           fullName: returnedProfile.fullName || "",
           phone: returnedProfile.phone || "",
@@ -358,8 +325,6 @@ const ProfileScreen = () => {
           avatar:
             returnedProfile.avatar ||
             "http://bootdey.com/img/Content/avatar/avatar1.png",
-          username: returnedProfile.user?.username || "",
-          email: returnedProfile.user?.email || "",
           birthday: formatIsoToYYYYMMDD(returnedProfile.birthday),
         };
 
@@ -368,8 +333,7 @@ const ProfileScreen = () => {
         }
 
         setInitialValues(newInitialValuesState);
-
-        resetForm(newInitialValuesState);
+        resetForm({ values: newInitialValuesState });
       }
     } catch (err) {
       console.error(
@@ -378,26 +342,58 @@ const ProfileScreen = () => {
       );
       if (axios.isAxiosError(err) && err.response) {
         if (err.response.status === 400 && err.response.data.errors) {
-          setError(
+          setErrorMessage(
             "Validation failed: " +
               Object.values(err.response.data.errors)
                 .map((e) => e.message || e)
                 .join(", ")
           );
+        } else if (err.response.status === 401 || err.response.status === 403) {
+          setErrorMessage(
+            "Your session has expired or you do not have access. Please log in again."
+          );
+          navigate("/login");
         } else if (err.response.status === 409) {
-          setError(err.response.data.message);
+          setErrorMessage(err.response.data.message);
         } else {
-          setError(
+          setErrorMessage(
             err.response.data.message || "An error occurred during submission."
           );
         }
       } else {
-        setError("Network error or server unavailable.");
+        setErrorMessage("Network error or server unavailable.");
       }
     } finally {
       setSubmitting(false);
     }
   };
+
+  // Conditional rendering for CSRF loading/error
+  if (loadingCsrf) {
+    return (
+      <section className="vh-100 d-flex justify-content-center align-items-center">
+        <div className="text-center">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <p className="mt-3">Loading form...</p>
+        </div>
+      </section>
+    );
+  }
+
+  if (errorCsrf) {
+    return (
+      <section className="vh-100 d-flex justify-content-center align-items-center">
+        <div className="alert alert-danger text-center" role="alert">
+          {errorCsrf}
+          <button className="btn btn-primary mt-2" onClick={fetchCsrfToken}>
+            Try Again
+          </button>
+        </div>
+      </section>
+    );
+  }
 
   if (loading) {
     return (
@@ -411,7 +407,6 @@ const ProfileScreen = () => {
     <div className="container-fluid px-4 mt-4">
       <hr className="mt-0 mb-4" />
       <div className="row">
-        {/* Wrap the entire content in a single Formik instance */}
         <Formik
           initialValues={initialValues}
           validationSchema={validationSchema}
@@ -425,10 +420,9 @@ const ProfileScreen = () => {
                 <div className="card mb-4 mb-xl-0">
                   <div className="card-header">Profile Picture</div>
                   <div className="card-body text-center">
-                    {/* Profile picture image */}
                     <img
                       crossOrigin={
-                        getImageUrl(values.avatar).includes(`bootdey`)
+                        getImageUrl(values.avatar).includes("bootdey")
                           ? undefined
                           : "anonymous"
                       }
@@ -436,14 +430,12 @@ const ProfileScreen = () => {
                       src={getImageUrl(values.avatar)}
                       alt="Profile"
                     />
-                    {/* Profile picture help block */}
                     <div className="small font-italic text-muted mb-4">
                       JPG or PNG no larger than 5 MB
                     </div>
-                    {/* Profile picture upload button and input */}
                     <input
                       type="file"
-                      id="profilePictureUpload"
+                      id="avatarUpload"
                       name="avatar"
                       style={{ display: "none" }}
                       onChange={(event) => {
@@ -454,14 +446,14 @@ const ProfileScreen = () => {
                       }}
                     />
                     <label
-                      htmlFor="profilePictureUpload"
+                      htmlFor="avatarUpload"
                       className="btn btn-primary"
                       style={{ cursor: "pointer" }}
                     >
                       Upload new image
                     </label>
                     <ErrorMessage
-                      name="profilePicture"
+                      name="avatar"
                       component="div"
                       className="text-danger mt-2"
                     />
@@ -482,11 +474,9 @@ const ProfileScreen = () => {
               </div>
 
               <div className="">
-                {/* Account details card */}
                 <div className="card mb-4">
                   <div className="card-header">Account Details</div>
                   <div className="card-body">
-                    {/* Form Group (username) */}
                     <div className="mb-3">
                       <label className="small mb-1" htmlFor="username">
                         Username
@@ -497,7 +487,7 @@ const ProfileScreen = () => {
                         type="text"
                         name="username"
                         placeholder="Enter your username"
-                        disabled // Username should generally not be editable via profile screen
+                        disabled
                       />
                       <ErrorMessage
                         name="username"
@@ -505,7 +495,6 @@ const ProfileScreen = () => {
                         className="text-danger"
                       />
                     </div>
-                    {/* Form Group (email address) */}
                     <div className="mb-3">
                       <label className="small mb-1" htmlFor="emailAddress">
                         Email address
@@ -516,7 +505,7 @@ const ProfileScreen = () => {
                         type="email"
                         name="emailAddress"
                         placeholder="Enter your email address"
-                        disabled // Email usually not editable here, or requires re-verification
+                        disabled
                       />
                       <ErrorMessage
                         name="emailAddress"
@@ -524,8 +513,6 @@ const ProfileScreen = () => {
                         className="text-danger"
                       />
                     </div>
-
-                    {/* Form Row (Full Name, Phone) */}
                     <div className="row gx-3 mb-3">
                       <div className="col-md-6">
                         <label className="small mb-1" htmlFor="fullName">
@@ -562,8 +549,6 @@ const ProfileScreen = () => {
                         />
                       </div>
                     </div>
-
-                    {/* Form Row (Birthday, isDefault) */}
                     <div className="row gx-3 mb-3">
                       <div className="col-md-6">
                         <label className="small mb-1" htmlFor="birthday">
@@ -604,8 +589,6 @@ const ProfileScreen = () => {
                         />
                       </div>
                     </div>
-
-                    {/* Address details */}
                     <div className="row gx-3 mb-3">
                       <div className="col-md-6">
                         <label className="small mb-1" htmlFor="street">
@@ -678,20 +661,22 @@ const ProfileScreen = () => {
                         />
                       </div>
                     </div>
-
-                    {/* Global Save Changes button */}
                     <button
                       className="btn btn-primary"
                       type="submit"
-                      disabled={isSubmitting || !dirty || !isValid} // Consolidated logic
+                      disabled={isSubmitting || !dirty || !isValid}
                     >
                       {isSubmitting ? "Saving..." : "Update"}
                     </button>
                     <div className="text-center mt-3">
                       {loading && <div className="text-info">Loading...</div>}
-                      {error && <div className="text-danger mt-2">{error}</div>}
-                      {success && (
-                        <div className="text-success mt-2">{success}</div>
+                      {errorMessage && (
+                        <div className="text-danger mt-2">{errorMessage}</div>
+                      )}
+                      {successMessage && (
+                        <div className="text-success mt-2">
+                          {successMessage}
+                        </div>
                       )}
                     </div>
                   </div>

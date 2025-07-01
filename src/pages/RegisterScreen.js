@@ -1,40 +1,35 @@
 import { Formik, Field, Form, ErrorMessage } from "formik";
 import { useState, useEffect } from "react";
-import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import * as Yup from "yup";
-
-const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:3000";
+import useCsrfToken from "../hooks/useCsrfToken";
+import apiInterceptor from "../services/apiInterceptor";
 
 function RegisterScreen() {
-  const [csrfToken, setCsrfToken] = useState("");
-  const [loadingCsrf, setLoadingCsrf] = useState(true);
-  const [errorCsrf, setErrorCsrf] = useState(null);
-  const [errorMessage, setErrorMessage] = useState(null);
+  const { csrfToken, loadingCsrf, errorCsrf, fetchCsrfToken } = useCsrfToken();
+  const [message, setMessage] = useState("");
   const navigate = useNavigate();
-
-  // --- CSRF Token Fetching ---
-  const fetchCsrfToken = async () => {
-    try {
-      setLoadingCsrf(true);
-      setErrorCsrf(null);
-      const response = await axios.get(`${API_BASE_URL}/api/csrf-token`, {
-        withCredentials: true,
-      });
-      setCsrfToken(response.data.csrfToken);
-      setLoadingCsrf(false);
-    } catch (error) {
-      console.error("Error fetching CSRF Token:", error);
-      setErrorCsrf("Failed to load the form. Please try again.");
-      setLoadingCsrf(false);
-    }
-  };
+  const location = useLocation();
 
   useEffect(() => {
-    fetchCsrfToken();
-  }, []);
+    if (location.state?.successMessage) {
+      setMessage(location.state.successMessage);
+      const timer = setTimeout(() => {
+        setMessage("");
+        window.history.replaceState({}, document.title);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [location.state]);
 
-  // --- Form Validation with Yup ---
+  useEffect(() => {
+    const handleLogout = () => {
+      navigate("/login");
+    };
+    window.addEventListener("auth:logout", handleLogout);
+    return () => window.removeEventListener("auth:logout", handleLogout);
+  }, [navigate]);
+
   const validationSchema = Yup.object({
     username: Yup.string()
       .min(3, "Your username must be at least 3 characters")
@@ -51,35 +46,26 @@ function RegisterScreen() {
       .required("Please confirm your password"),
   });
 
-  // --- Form Submission Handler ---
   const handleSubmit = async (values, { setSubmitting, resetForm }) => {
     if (
       !csrfToken ||
       typeof csrfToken !== "string" ||
       csrfToken.trim() === ""
     ) {
-      setErrorMessage(
-        "Error: CSRF Token missing or invalid. Please reload the page."
-      );
+      setMessage("Error: CSRF Token missing or invalid. Please try again."); // Fixed: Use setMessage
       setSubmitting(false);
       return;
     }
 
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/api/auth/register`,
-        values,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-Token": csrfToken,
-          },
-          withCredentials: true,
-        }
-      );
+      const response = await apiInterceptor.post("/auth/register", values, {
+        headers: {
+          "X-CSRF-Token": csrfToken,
+        },
+      });
       console.log("Registration successful:", response.data);
       resetForm();
-      setErrorMessage(null);
+      setMessage(""); // Clear any previous error messages
       navigate("/verify-pin", { state: { email: values.email } });
     } catch (error) {
       console.error("Error submitting registration request:", error);
@@ -97,21 +83,12 @@ function RegisterScreen() {
       } else {
         errorMsg = "An error occurred during registration. Please try again.";
       }
-      setErrorMessage(errorMsg);
+      setMessage(errorMsg); // Fixed: Use setMessage
     } finally {
       setSubmitting(false);
     }
   };
 
-  // --- Password Visibility Toggles ---
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-  const togglePasswordVisibility = () => setShowPassword(!showPassword);
-  const toggleConfirmPasswordVisibility = () =>
-    setShowConfirmPassword(!showConfirmPassword);
-
-  // --- Conditional Rendering for Loading/Error States ---
   if (loadingCsrf) {
     return (
       <section className="vh-100 d-flex justify-content-center align-items-center">
@@ -138,7 +115,6 @@ function RegisterScreen() {
     );
   }
 
-  // --- Main Register Form ---
   return (
     <section className="vh-100" style={{ backgroundColor: "#eee" }}>
       <div className="container h-100">
@@ -152,12 +128,16 @@ function RegisterScreen() {
                       <i className="fas fa-user-plus me-3"></i> Sign up
                     </p>
 
-                    {errorMessage && (
+                    {message && (
                       <div
-                        className="alert alert-danger text-center"
+                        className={`alert ${
+                          message.includes("Error")
+                            ? "alert-danger"
+                            : "alert-success"
+                        } text-center`}
                         role="alert"
                       >
-                        {errorMessage}
+                        {message}
                       </div>
                     )}
 
@@ -173,7 +153,6 @@ function RegisterScreen() {
                     >
                       {({ touched, errors, isSubmitting }) => (
                         <Form className="mx-1 mx-md-4">
-                          {/* Username */}
                           <div className="d-flex flex-row align-items-center mb-4">
                             <i className="fas fa-user fa-lg me-3 fa-fw"></i>
                             <div className="form-outline flex-fill mb-0">
@@ -195,7 +174,6 @@ function RegisterScreen() {
                               />
                             </div>
                           </div>
-                          {/* Email */}
                           <div className="d-flex flex-row align-items-center mb-4">
                             <i className="fas fa-envelope fa-lg me-3 fa-fw"></i>
                             <div className="form-outline flex-fill mb-0">
@@ -217,12 +195,11 @@ function RegisterScreen() {
                               />
                             </div>
                           </div>
-                          {/* Password */}
                           <div className="d-flex flex-row align-items-center mb-4 position-relative">
                             <i className="fas fa-lock fa-lg me-3 fa-fw"></i>
                             <div className="form-outline flex-fill mb-0">
                               <Field
-                                type={showPassword ? "text" : "password"}
+                                type="password"
                                 id="passwordField"
                                 className={`form-control ${
                                   touched.password && errors.password
@@ -237,29 +214,13 @@ function RegisterScreen() {
                                 component="div"
                                 className="invalid-feedback"
                               />
-                              <i
-                                onClick={togglePasswordVisibility}
-                                className={`fas ${
-                                  showPassword ? "fa-eye" : "fa-eye-slash"
-                                } position-absolute`}
-                                style={{
-                                  cursor: "pointer",
-                                  top: "50%",
-                                  transform: "translateY(-50%)",
-                                  right:
-                                    touched.password && errors.password
-                                      ? "2.5rem"
-                                      : "1rem",
-                                }}
-                              ></i>
                             </div>
                           </div>
-                          {/* Repeat Password */}
                           <div className="d-flex flex-row align-items-center mb-4 position-relative">
                             <i className="fas fa-key fa-lg me-3 fa-fw"></i>
                             <div className="form-outline flex-fill mb-0">
                               <Field
-                                type={showConfirmPassword ? "text" : "password"}
+                                type="password"
                                 id="confirmPasswordField"
                                 className={`form-control ${
                                   touched.confirmPassword &&
@@ -275,27 +236,8 @@ function RegisterScreen() {
                                 component="div"
                                 className="invalid-feedback"
                               />
-                              <i
-                                onClick={toggleConfirmPasswordVisibility}
-                                className={`fas ${
-                                  showConfirmPassword
-                                    ? "fa-eye"
-                                    : "fa-eye-slash"
-                                } position-absolute`}
-                                style={{
-                                  cursor: "pointer",
-                                  top: "50%",
-                                  transform: "translateY(-50%)",
-                                  right:
-                                    touched.confirmPassword &&
-                                    errors.confirmPassword
-                                      ? "2.5rem"
-                                      : "1rem",
-                                }}
-                              ></i>
                             </div>
                           </div>
-
                           <div className="form-check d-flex justify-content-center mb-5">
                             <label
                               className="form-check-label"
@@ -305,7 +247,6 @@ function RegisterScreen() {
                               <a href="/login">Sign in</a>
                             </label>
                           </div>
-
                           <div className="d-flex justify-content-center mx-4 mb-3 mb-lg-4">
                             <button
                               type="submit"

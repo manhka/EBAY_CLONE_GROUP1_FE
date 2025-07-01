@@ -1,133 +1,101 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Formik, Field, Form, ErrorMessage } from "formik";
+import * as Yup from "yup";
+import useCsrfToken from "../hooks/useCsrfToken";
+import apiInterceptor from "../services/apiInterceptor";
 
 function LoginScreen() {
-  const [message, setMessage] = useState("");
-  const [csrfToken, setCsrfToken] = useState("");
-  const [loadingCsrf, setLoadingCsrf] = useState(true);
-  const [errorCsrf, setErrorCsrf] = useState(null);
-
+  const { csrfToken, loadingCsrf, errorCsrf, fetchCsrfToken } = useCsrfToken();
+  const [successMessage, setSuccessMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
   const navigate = useNavigate();
   const location = useLocation();
 
-  // --- Axios Instance with CSRF Handling ---
-  const apiClient = axios.create({
-    baseURL: "http://localhost:3000/api", // Double-check your backend port!
-    withCredentials: true,
-  });
-
-  apiClient.interceptors.request.use(
-    (config) => {
-      if (
-        config.method !== "get" &&
-        config.method !== "head" &&
-        config.method !== "options"
-      ) {
-        if (csrfToken) {
-          config.headers["X-CSRF-Token"] = csrfToken;
-        } else {
-          console.warn(
-            "CSRF Token not available when sending request. Attempting to re-fetch..."
-          );
-        }
-      }
-      return config;
-    },
-    (error) => {
-      return Promise.reject(error);
-    }
-  );
-
-  // --- Fetch CSRF Token on component mount ---
+  // Xử lý successMessage từ location.state
   useEffect(() => {
-    const fetchCsrfToken = async () => {
-      try {
-        const response = await apiClient.get("/csrf-token");
-        setCsrfToken(response.data.csrfToken);
-        setLoadingCsrf(false);
-      } catch (error) {
-        console.error("Error fetching CSRF Token:", error);
-        setErrorCsrf("Failed to load the form. Please try again later.");
-        setLoadingCsrf(false);
-      }
-    };
-    fetchCsrfToken();
-
-    if (location.state && location.state.successMessage) {
-      setMessage(location.state.successMessage);
+    if (location.state?.successMessage) {
+      setSuccessMessage(location.state.successMessage);
       const timer = setTimeout(() => {
-        setMessage("");
+        setSuccessMessage("");
         window.history.replaceState({}, document.title);
       }, 5000);
       return () => clearTimeout(timer);
     }
   }, [location.state]);
 
-  // --- Form Validation (Formik's validate prop) ---
-  const validate = (values) => {
-    const errors = {};
-    if (!values.email) {
-      errors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S/.test(values.email)) {
-      errors.email = "Invalid email address";
-    }
+  // Xử lý logout event từ apiInterceptor
+  useEffect(() => {
+    const handleLogout = () => {
+      navigate("/login");
+    };
+    window.addEventListener("auth:logout", handleLogout);
+    return () => window.removeEventListener("auth:logout", handleLogout);
+  }, [navigate]);
 
-    if (!values.password) {
-      errors.password = "Password is required";
-    } else if (values.password.length < 6) {
-      errors.password = "Password must be at least 6 characters";
-    }
-    return errors;
-  };
+  // Form validation với Yup
+  const validationSchema = Yup.object({
+    email: Yup.string()
+      .email("Invalid email address")
+      .required("Email is required"),
+    password: Yup.string()
+      .min(6, "Password must be at least 6 characters")
+      .required("Password is required"),
+  });
 
-  // --- Handle Login Submission (Formik's onSubmit prop) ---
-  const handleSubmit = async (values, { setSubmitting, setStatus }) => {
-    setMessage("");
-    setStatus(null);
-
-    if (!csrfToken) {
-      setStatus({
-        error:
-          "Security Error: CSRF token missing. Please try reloading the page.",
-      });
+  // Handle login submission
+  const handleSubmit = async (values, { setSubmitting, resetForm }) => {
+    if (
+      !csrfToken ||
+      typeof csrfToken !== "string" ||
+      csrfToken.trim() === ""
+    ) {
+      setErrorMessage(
+        "Error: CSRF Token missing or invalid. Please try again."
+      );
       setSubmitting(false);
       return;
     }
 
     try {
-      const response = await apiClient.post("/auth/login", {
+      const response = await apiInterceptor.post("/auth/login", {
         email: values.email,
         password: values.password,
       });
-
-      setMessage(response.data.msg);
+      setSuccessMessage(response.data.msg);
       console.log("Login successful:", response.data);
-
+      resetForm();
+      setErrorMessage("");
       setTimeout(() => {
         navigate("/profile");
       }, 1500);
     } catch (error) {
       console.error("Login error:", error);
-      const errorMsg =
-        error.response?.data?.msg ||
-        error.response?.data?.message ||
-        "Login failed. Please try again.";
-      setStatus({ error: errorMsg });
-      setMessage(errorMsg);
+      let errorMsg = "Login failed. Please try again.";
+      if (error.response && error.response.data) {
+        if (typeof error.response.data === "string") {
+          errorMsg = error.response.data;
+        } else {
+          errorMsg =
+            error.response.data.msg || error.response.data.message || errorMsg;
+        }
+      } else if (error.request) {
+        errorMsg =
+          "Could not connect to the server. Please check your internet connection.";
+      }
+      setErrorMessage(errorMsg);
     } finally {
       setSubmitting(false);
     }
   };
 
-  // --- Password Visibility Toggle ---
+  // Password visibility toggle
   const [showPassword, setShowPassword] = useState(false);
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
 
-  // --- Conditional Rendering for Loading/Error States (CSRF) ---
+  // Conditional rendering for loading/error states
   if (loadingCsrf) {
     return (
       <section className="vh-100 d-flex justify-content-center align-items-center bg-light">
@@ -146,18 +114,15 @@ function LoginScreen() {
       <section className="vh-100 d-flex justify-content-center align-items-center bg-light">
         <div className="alert alert-danger text-center" role="alert">
           {errorCsrf}
-          <button
-            className="btn btn-link mt-2"
-            onClick={() => window.location.reload()}
-          >
-            Reload Page
+          <button className="btn btn-primary mt-2" onClick={fetchCsrfToken}>
+            Try Again
           </button>
         </div>
       </section>
     );
   }
 
-  // --- Main Login Form ---
+  // Main login form
   return (
     <section className="vh-100" style={{ backgroundColor: "#9A616D" }}>
       <div className="container py-5 h-100">
@@ -177,10 +142,10 @@ function LoginScreen() {
                   <div className="card-body p-4 p-lg-5 text-black">
                     <Formik
                       initialValues={{ email: "", password: "" }}
-                      validate={validate}
+                      validationSchema={validationSchema}
                       onSubmit={handleSubmit}
                     >
-                      {({ isSubmitting, touched, errors, status }) => (
+                      {({ isSubmitting, touched, errors }) => (
                         <Form>
                           <div className="d-flex align-items-center mb-3 pb-1">
                             <i
@@ -197,20 +162,23 @@ function LoginScreen() {
                             Sign into your account
                           </h5>
 
-                          {message && (
+                          {successMessage && (
                             <div
-                              className={`alert ${
-                                message.includes("login_successful")
-                                  ? "alert-success"
-                                  : "alert-danger"
-                              } fade show`}
+                              className="alert alert-success fade show"
                               role="alert"
                             >
-                              {message}
+                              {successMessage}
+                            </div>
+                          )}
+                          {errorMessage && (
+                            <div
+                              className="alert alert-danger fade show"
+                              role="alert"
+                            >
+                              {errorMessage}
                             </div>
                           )}
 
-                          {/* Email Field - No eye icon here, so no change needed */}
                           <div className="form-outline mb-4">
                             <label className="form-label" htmlFor="emailInput">
                               Email address
@@ -232,7 +200,6 @@ function LoginScreen() {
                             />
                           </div>
 
-                          {/* Password Field - Adjust eye icon position */}
                           <div className="form-outline mb-4 position-relative">
                             <label
                               className="form-label"
@@ -259,17 +226,15 @@ function LoginScreen() {
                               onClick={togglePasswordVisibility}
                               className={`fas ${
                                 showPassword ? "fa-eye" : "fa-eye-slash"
-                              } position-absolute end-0 translate-middle-y ${
-                                touched.password && errors.password
-                                  ? "me-5"
-                                  : "me-3"
-                              }`}
+                              } position-absolute`}
                               style={{
                                 cursor: "pointer",
-                                top:
+                                top: "70%",
+                                transform: "translateY(-50%)",
+                                right:
                                   touched.password && errors.password
-                                    ? "55%"
-                                    : "70%",
+                                    ? "2.5rem"
+                                    : "1rem",
                               }}
                             ></i>
                           </div>

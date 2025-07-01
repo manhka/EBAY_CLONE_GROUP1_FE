@@ -1,25 +1,25 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
-
-const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:3000";
+import {
+  fetchCsrfToken,
+  setCsrfToken,
+  getCsrfToken,
+} from "../services/csrfManager";
 
 const useCsrfToken = () => {
-  const [csrfToken, setCsrfToken] = useState("");
+  const [csrfToken, setCsrfTokenState] = useState(getCsrfToken() || "");
   const [loadingCsrf, setLoadingCsrf] = useState(true);
   const [errorCsrf, setErrorCsrf] = useState(null);
 
-  const fetchCsrfToken = async () => {
+  const fetchCsrf = async () => {
     try {
       setLoadingCsrf(true);
       setErrorCsrf(null);
-      const response = await axios.get(`${API_BASE_URL}/api/csrf-token`, {
-        withCredentials: true,
-      });
-      setCsrfToken(response.data.csrfToken);
+      const token = await fetchCsrfToken();
+      setCsrfTokenState(token);
+      setCsrfToken(token); // Đồng bộ với csrfManager
       setLoadingCsrf(false);
-      return response.data.csrfToken;
+      return token;
     } catch (error) {
-      console.error("Error fetching CSRF Token:", error);
       setErrorCsrf("Failed to load CSRF token. Please try again.");
       setLoadingCsrf(false);
       return null;
@@ -27,10 +27,10 @@ const useCsrfToken = () => {
   };
 
   useEffect(() => {
-    fetchCsrfToken();
+    fetchCsrf();
   }, []);
 
-  return { csrfToken, loadingCsrf, errorCsrf, fetchCsrfToken };
+  return { csrfToken, loadingCsrf, errorCsrf, fetchCsrfToken: fetchCsrf };
 };
 
 export default useCsrfToken;
