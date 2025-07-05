@@ -6,16 +6,23 @@ import LoginScreen from "./pages/LoginScreen";
 import VerifyPinScreen from "./pages/VerifyPinScreen";
 import HomePage from "./pages/HomePage";
 import ProfileScreen from "./pages/ProfileScreen";
+import CartScreen from "./pages/CartScreen";
+import { CartProvider } from "./context/cartContext";
 
 function App() {
   return (
     <div>
-      <Routes>
-        <Route path="/register" element={<RegisterScreen />} />
-        <Route path="/verify-pin" element={<VerifyPinScreen />} />
-        <Route path="/login" element={<LoginScreen />} />
-        <Route path="/profile" element={<ProfileScreen />} />
-      </Routes>
+      <CartProvider>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/register" element={<RegisterScreen />} />
+          <Route path="/verify-pin" element={<VerifyPinScreen />} />
+          <Route path="/login" element={<LoginScreen />} />
+          <Route path="/profile" element={<ProfileScreen />} />
+          <Route path="/cart" element={<CartScreen />} />
+        </Routes>
+      </CartProvider>
+
     </div>
   );
 }

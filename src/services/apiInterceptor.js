@@ -1,6 +1,16 @@
 import axios from "axios";
 import { getCsrfToken, fetchCsrfToken } from "./csrfManager";
 
+let authCallbacks = {
+  onLogout: () => console.error("onLogout callback not set in apiInterceptor"),
+};
+
+export const setAuthCallbacks = (callbacks) => {
+  if (callbacks && typeof callbacks.onLogout === 'function') {
+    authCallbacks.onLogout = callbacks.onLogout;
+  }
+};
+
 const apiInterceptor = axios.create({
   baseURL: process.env.REACT_APP_API_URL || "http://localhost:3000/api",
   withCredentials: true,

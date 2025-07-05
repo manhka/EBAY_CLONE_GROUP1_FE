@@ -62,12 +62,21 @@ function LoginScreen() {
         email: values.email,
         password: values.password,
       });
+      
+      if (response.data && response.data.user) {
+        console.log("Login successful, saving user to localStorage:", response.data.user);
+        localStorage.setItem('currentUser', JSON.stringify(response.data.user));
+      } else {
+        // Nếu backend không trả về user, báo lỗi
+        throw new Error("User data not found in login response.");
+      }
+      
       setSuccessMessage(response.data.msg);
       console.log("Login successful:", response.data);
       resetForm();
       setErrorMessage("");
       setTimeout(() => {
-        navigate("/profile");
+        navigate("/");
       }, 1500);
     } catch (error) {
       console.error("Login error:", error);
