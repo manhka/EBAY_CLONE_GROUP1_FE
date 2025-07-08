@@ -8,6 +8,8 @@ import HomePage from "./pages/HomePage";
 import ProfileScreen from "./pages/ProfileScreen";
 import CartScreen from "./pages/CartScreen";
 import { CartProvider } from "./context/cartContext";
+import ProductDetail from "./pages/ProductScreen";
+import SearchResults from "./pages/SearchScreen";
 
 function App() {
   return (
@@ -20,6 +22,8 @@ function App() {
           <Route path="/login" element={<LoginScreen />} />
           <Route path="/profile" element={<ProfileScreen />} />
           <Route path="/cart" element={<CartScreen />} />
+          <Route path="/product/:id" element={<ProductDetail />} />
+          <Route path="/search" element={<SearchResults />} />
         </Routes>
       </CartProvider>
 

@@ -133,7 +133,7 @@ export default function TopMenu() {
 
   return (
     <div className="bg-white text-xs border-b">
-      <div className="flex items-center justify-between max-w-[1300px] mx-auto h-8 px-4">
+      <div className="flex items-center justify-between max-w-[100%] mx-auto h-8 px-4">
         {/* Left Side Links */}
         <ul className="flex items-center space-x-4">
           <li>

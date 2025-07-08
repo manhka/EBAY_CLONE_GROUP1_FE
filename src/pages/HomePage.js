@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
   FiSearch,
   FiHeart,
@@ -19,6 +19,7 @@ import {
   FiBell,
 } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
+import { Link } from "react-router-dom";
 
 import TopMenu from "../layouts/TopMenu";
 import MainHeader from "../layouts/Header";
@@ -27,6 +28,7 @@ import Footer from "../layouts/Footer";
 import Product from "../layouts/Product";
 import HeroBanner from "../layouts/HeroBanner";
 import apiInterceptor from "../services/apiInterceptor";
+import FilterBar from "../layouts/FilterBar";
 
 // Dữ liệu mẫu cho các xu hướng tìm kiếm
 const TRENDING_SEARCHES = [
@@ -42,33 +44,8 @@ const TRENDING_SEARCHES = [
   "Outdoor Furniture",
 ];
 
-// Dữ liệu mẫu cho các bộ sưu tập
-const COLLECTIONS = [
-  {
-    id: 1,
-    title: "Summer Essentials",
-    image: "https://picsum.photos/id/28/600/300",
-    itemCount: 156,
-    color: "from-yellow-400 to-orange-500",
-  },
-  {
-    id: 2,
-    title: "Tech Gadgets Under $100",
-    image: "https://picsum.photos/id/48/600/300",
-    itemCount: 89,
-    color: "from-blue-400 to-indigo-500",
-  },
-  {
-    id: 3,
-    title: "Home Office Setup",
-    image: "https://picsum.photos/id/36/600/300",
-    itemCount: 124,
-    color: "from-green-400 to-teal-500",
-  },
-];
-
 // Component chính
-const MainPage = () => {
+const HomePage = () => {
   // State từ API
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -79,7 +56,6 @@ const MainPage = () => {
   const [viewMode, setViewMode] = useState("grid");
 
   // State bổ sung cho UI nâng cao
-  const [currentBannerSlide, setCurrentBannerSlide] = useState(0);
   const [sortBy, setSortBy] = useState("featured");
   const [showFilters, setShowFilters] = useState(false);
   const [priceRange, setPriceRange] = useState([0, 1000]);
@@ -105,6 +81,8 @@ const MainPage = () => {
         const productsData = productsResponse.data;
         const categoriesData = categoriesResponse.data;
 
+        console.log("Dữ liệu products nhận được ở HomePage:", productsData);
+        console.log("Dữ liệu categories nhận được ở HomePage:", categoriesData);
         setProducts(productsData);
         setCategories(categoriesData);
 
@@ -142,13 +120,16 @@ const MainPage = () => {
   }, []);
 
   // Filter products by category
-  const filteredProducts = selectedCategory
-    ? products.filter(
-      (product) =>
-        String(product.categoryId._id || product.categoryId) ===
-        String(selectedCategory)
-    )
-    : products;
+  const filteredProducts = useMemo(() => {
+    return products.filter(product => {
+      // Lọc theo category
+      const categoryMatch = !selectedCategory || (String(product.categoryId?._id) === String(selectedCategory));
+
+      const priceMatch = product.price >= priceRange[0] * 100 && product.price <= priceRange[1] * 100;
+
+      return categoryMatch && priceMatch;
+    });
+  }, [products, selectedCategory, priceRange]);
 
   // Xử lý sắp xếp sản phẩm
   const getSortedProducts = () => {
@@ -268,11 +249,12 @@ const MainPage = () => {
     return Math.round(((originalPrice - salePrice) / originalPrice) * 100);
   };
 
+
   return (
     <div className="min-h-screen">
       <div className="bg-white text-gray-900 transition-colors duration-300">
         <div className="bg-white shadow-sm">
-          <div className="max-w-[1300px] mx-auto">
+          <div className="max-w-[95%] mx-auto">
             <TopMenu />
             <MainHeader />
             <SubMenu />
@@ -293,7 +275,7 @@ const MainPage = () => {
           )}
         </AnimatePresence>
 
-        <div className="max-w-[1300px] mx-auto px-4">
+        <div className="max-w-[95%] mx-auto px-4">
           <HeroBanner />
 
           {/* Xu hướng tìm kiếm */}
@@ -397,176 +379,15 @@ const MainPage = () => {
             </div>
 
             {/* Bộ lọc và Sắp xếp */}
-            <div
-              ref={filtersRef}
-              className={`bg-white p-4 rounded-lg shadow-sm mb-6 ${isSticky ? "sticky top-0 z-20 shadow-md" : ""
-                }`}
-            >
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
-                <div className="flex items-center mb-4 md:mb-0">
-                  <button
-                    onClick={() => setShowFilters(!showFilters)}
-                    className="flex items-center text-sm font-medium text-gray-700 mr-4"
-                  >
-                    <FiFilter className="mr-1 h-4 w-4" />
-                    Filters
-                    <FiChevronDown
-                      className={`ml-1 h-4 w-4 transition-transform ${showFilters ? "rotate-180" : ""
-                        }`}
-                    />
-                  </button>
-
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => setViewMode("grid")}
-                      className={`p-1.5 rounded ${viewMode === "grid" ? "bg-gray-50" : "bg-white"
-                        }`}
-                    >
-                      <FiGrid className="h-5 w-5 text-gray-700" />
-                    </button>
-                    <button
-                      onClick={() => setViewMode("list")}
-                      className={`p-1.5 rounded ${viewMode === "list" ? "bg-gray-50" : "bg-white"
-                        }`}
-                    >
-                      <FiList className="h-5 w-5 text-gray-700" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex items-center w-full md:w-auto">
-                  <div className="text-sm text-gray-500 mr-2">Sort by:</div>
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
-                    className="flex-grow md:flex-grow-0 border-gray-300 rounded-md text-sm focus:ring-[#0053A0] focus:border-[#0053A0] bg-white text-gray-900"
-                  >
-                    <option value="featured">Featured</option>
-                    <option value="price-low">Price: Low to High</option>
-                    <option value="price-high">Price: High to Low</option>
-                    <option value="newest">Newest First</option>
-                  </select>
-
-                  <button
-                    onClick={() => {
-                      setSelectedCategory(null);
-                      setPriceRange([0, 1000]);
-                      setSortBy("featured");
-                    }}
-                    className="ml-2 flex items-center text-sm text-[#0053A0] hover:underline"
-                  >
-                    <FiRefreshCw className="mr-1 h-3 w-3" />
-                    Reset
-                  </button>
-                </div>
-              </div>
-
-              {/* Bộ lọc mở rộng */}
-              {showFilters && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="mt-4 pt-4 border-t border-gray-200"
-                >
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div>
-                      <h3 className="font-medium text-gray-900 mb-2">
-                        Price Range
-                      </h3>
-                      <div className="flex items-center space-x-4">
-                        <input
-                          type="range"
-                          min="0"
-                          max="1000"
-                          step="10"
-                          value={priceRange[1]}
-                          onChange={(e) =>
-                            setPriceRange([
-                              priceRange[0],
-                              Number.parseInt(e.target.value),
-                            ])
-                          }
-                          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#0053A0]"
-                        />
-                      </div>
-                      <div className="flex justify-between mt-2 text-sm text-gray-600">
-                        <span>${priceRange[0]}</span>
-                        <span>${priceRange[1]}</span>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h3 className="font-medium text-gray-900 mb-2">
-                        Item Condition
-                      </h3>
-                      <div className="space-y-2">
-                        <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            className="rounded border-gray-300 text-[#0053A0] focus:ring-[#0053A0]"
-                            defaultChecked
-                          />
-                          <span className="ml-2 text-sm text-gray-700">New</span>
-                        </label>
-                        <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            className="rounded border-gray-300 text-[#0053A0] focus:ring-[#0053A0]"
-                          />
-                          <span className="ml-2 text-sm text-gray-700">Used</span>
-                        </label>
-                        <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            className="rounded border-gray-300 text-[#0053A0] focus:ring-[#0053A0]"
-                          />
-                          <span className="ml-2 text-sm text-gray-700">
-                            Refurbished
-                          </span>
-                        </label>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h3 className="font-medium text-gray-900 mb-2">
-                        Shipping Options
-                      </h3>
-                      <div className="space-y-2">
-                        <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            className="rounded border-gray-300 text-[#0053A0] focus:ring-[#0053A0]"
-                            defaultChecked
-                          />
-                          <span className="ml-2 text-sm text-gray-700">
-                            Free Shipping
-                          </span>
-                        </label>
-                        <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            className="rounded border-gray-300 text-[#0053A0] focus:ring-[#0053A0]"
-                          />
-                          <span className="ml-2 text-sm text-gray-700">
-                            Same Day Shipping
-                          </span>
-                        </label>
-                        <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            className="rounded border-gray-300 text-[#0053A0] focus:ring-[#0053A0]"
-                          />
-                          <span className="ml-2 text-sm text-gray-700">
-                            Free Returns
-                          </span>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </div>
+            <FilterBar
+              resultsCount={sortedProducts.length}
+              viewMode={viewMode}
+              setViewMode={setViewMode}
+              sortBy={sortBy}
+              setSortBy={setSortBy}
+              priceRange={priceRange}
+              setPriceRange={setPriceRange}
+            />
             {loading ? (
               <div className="flex items-center justify-center py-20">
                 <svg
@@ -618,62 +439,67 @@ const MainPage = () => {
             ) : (
               <div className="space-y-4 mb-8">
                 {paginatedProducts.map((product) => (
-                  <div
-                    key={product.id}
-                    className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-300"
-                  >
-                    <div className="flex flex-col sm:flex-row">
-                      <div className="sm:w-48 h-48 flex-shrink-0">
-                        <img
-                          src={`${product.images?.[0]}/300`}
-                          alt={product.title}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div className="p-4 flex-grow">
-                        <div className="flex justify-between">
-                          <div>
-                            <h3 className="font-medium text-lg text-gray-900 mb-1">
-                              {product.title}
-                            </h3>
-                            <p className="text-sm text-gray-600 line-clamp-2 mb-2">
-                              {product.description}
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => toggleWishlist(product.id)}
-                            className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-gray-50"
-                          >
-                            <FiHeart
-                              className={`${wishlist.includes(product.id)
-                                ? "text-[#e43147] fill-[#e43147]"
-                                : "text-gray-400"
-                                }`}
-                            />
-                          </button>
+                  <Link to={`/product/${product._id}`} key={product._id} className="block group">
+                    <div className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-300">
+                      <div className="flex flex-col sm:flex-row">
+                        <div className="sm:w-48 h-48 flex-shrink-0 bg-gray-100">
+                          <img
+                            src={`${product.images?.[0]}?v=${new Date(product.updatedAt).getTime()}`}
+                            alt={product.title}
+                            className="w-full h-[200px] object-cover"
+                          />
                         </div>
-                        <div className="mt-auto flex items-center justify-between">
-                          <div>
-                            <span className="text-xl font-bold text-gray-900">
-                              ${(product.price / 100).toFixed(2)}
-                            </span>
-                            <span className="text-xs text-gray-500 ml-2">
-                              {product.quantity > 0
-                                ? `${product.quantity} available`
-                                : "Out of stock"}
-                            </span>
+                        <div className="p-4 flex flex-col flex-grow">
+                          <div className="flex justify-between">
+                            <div>
+                              <h3 className="font-medium text-lg text-gray-900 mb-1 group-hover:underline">
+                                {product.title}
+                              </h3>
+                              <p className="text-sm text-gray-600 line-clamp-2 mb-2">
+                                {product.description}
+                              </p>
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                toggleWishlist(product._id); // Sử dụng _id để nhất quán
+                              }}
+                              className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-gray-100 flex-shrink-0"
+                            >
+                              <FiHeart
+                                className={`${wishlist.includes(product._id)
+                                  ? "text-red-500 fill-current"
+                                  : "text-gray-400"
+                                  }`}
+                              />
+                            </button>
                           </div>
-                          <button
-                            onClick={() => handleAddToCart(product)}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 flex items-center"
-                          >
-                            <FiShoppingCart className="mr-2" size={14} />
-                            Add to Cart
-                          </button>
+                          <div className="mt-auto flex items-center justify-between">
+                            <div>
+                              <span className="text-xl font-bold text-gray-900">
+                                ${(product.price / 100).toFixed(2)}
+                              </span>
+                              <span className="text-xs text-gray-500 ml-2">
+                                {product.quantity > 0
+                                  ? `${product.quantity} available`
+                                  : "Out of stock"}
+                              </span>
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                handleAddToCart(product);
+                              }}
+                              className="px-4 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 flex items-center"
+                            >
+                              <FiShoppingCart className="mr-2" size={14} />
+                              Add to Cart
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}
@@ -745,13 +571,9 @@ const MainPage = () => {
               </div>
             )}
           </div>
-
-
-
         </div>
-
-        <div className="mt-10 bg-gray-300 text-white">
-          <div className="max-w-[1300px] mx-auto">
+        <div className="mt-10 text-white">
+          <div className="max-w-[95%] mx-auto">
             <Footer />
           </div>
         </div>
@@ -760,4 +582,4 @@ const MainPage = () => {
   );
 };
 
-export default MainPage;
+export default HomePage;

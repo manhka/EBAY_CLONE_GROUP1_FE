@@ -10,7 +10,7 @@ import DiscountCode from "../components/DiscountCode";
 import { useCart } from "../context/cartContext";
 
 // API base URL
-const API_BASE_URL = "http://localhost:3001";
+const API_BASE_URL = "http://localhost:3000";
 
 function EmptyCart() {
   const navigate = useNavigate();
@@ -53,7 +53,7 @@ function CartItem({ product, onRemove, onUpdateQuantity, availableStock }) {
         <div>
           <div className="font-semibold"><a href={`/product/${product.idProduct}`}>{product.title}</a></div>
           <div className="text-sm text-gray-500">{product.description}</div>
-          <div className="font-bold mt-2">${(product.price/100).toFixed(2)}</div>
+          <div className="font-bold mt-2">${(product.price / 100).toFixed(2)}</div>
 
           <div className="flex items-center gap-2 mt-2">
             <button
@@ -489,93 +489,97 @@ export default function Cart() {
     }
   }, [isAuthenticated]);
 
-if (cartItems.length === 0) {
+  if (cartItems.length === 0) {
+    return (
+      <div id="MainLayout" className="min-w-[1050px] max-w-[95%] mx-auto">
+        <div>
+          <TopMenu />
+          <MainHeader />
+          <SubMenu />
+        </div>
+
+        <div className="max-w-[1200px] mx-auto mb-8 min-h-[400px] flex justify-center items-center">
+          <EmptyCart />
+        </div>
+
+        <Footer />
+      </div>
+    );
+  }
+
   return (
-    <div id="MainLayout" className="min-w-[1050px] max-w-[1300px] mx-auto">
+    <div id="MainLayout" className="min-w-[1050px] max-w-[95%] mx-auto">
       <div>
         <TopMenu />
         <MainHeader />
         <SubMenu />
       </div>
 
-      <div className="max-w-[1200px] mx-auto mb-8 min-h-[400px] flex justify-center items-center">
-        <EmptyCart />
-      </div>
+      <div className="max-w-[1200px] mx-auto mb-8 min-h-[300px]">
+        <div className="text-2xl font-bold my-4">Giỏ hàng</div>
+        {error && <div className="text-red-500 text-center mb-4">{error}</div>}
+        {isLoading ? (
+          <div className="text-center py-12">Đang tải...</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="md:col-span-2 space-y-4">
+              {cartItems.map((product) => (
+                <CartItem
+                  key={product.idProduct}
+                  product={product}
+                  onRemove={removeFromCart}
+                  onUpdateQuantity={updateQuantity}
+                  availableStock={product.availableStock}
+                />
+              ))}
+            </div>
 
-      <Footer />
-    </div>
-  );
-}
+            <div className="md:col-span-1">
+              <div className="bg-white p-4 border sticky top-4">
+                <DiscountCode
+                  onApplyDiscount={handleApplyDiscount}
+                  productId={cartItems[0]?.idProduct}
+                />
 
-  return (
-  <div id="MainLayout" className="min-w-[1050px] max-w-[1300px] mx-auto">
-    <div>
-      <TopMenu />
-      <MainHeader />
-      <SubMenu />
-    </div>
+                <button
+                  onClick={handleCheckout}
+                  className="flex items-center justify-center bg-blue-600 w-full text-white font-semibold p-3 rounded-full hover:bg-blue-700 mt-4"
+                >
+                  Thanh toán
+                </button>
 
-    <div className="max-w-[1200px] mx-auto mb-8 min-h-[300px]">
-      <div className="text-2xl font-bold my-4">Giỏ hàng</div>
-      {error && <div className="text-red-500 text-center mb-4">{error}</div>}
-      {isLoading ? (
-        <div className="text-center py-12">Đang tải...</div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="md:col-span-2 space-y-4">
-            {cartItems.map((product) => (
-              <CartItem
-                key={product.idProduct}
-                product={product}
-                onRemove={removeFromCart}
-                onUpdateQuantity={updateQuantity}
-                availableStock={product.availableStock}
-              />
-            ))}
-          </div>
-
-          <div className="md:col-span-1">
-            <div className="bg-white p-4 border sticky top-4">
-              <DiscountCode
-                onApplyDiscount={handleApplyDiscount}
-                productId={cartItems[0]?.idProduct}
-              />
-
-              <button
-                onClick={handleCheckout}
-                className="flex items-center justify-center bg-blue-600 w-full text-white font-semibold p-3 rounded-full hover:bg-blue-700 mt-4"
-              >
-                Thanh toán
-              </button>
-
-              <div className="flex items-center justify-between mt-4 text-sm mb-1">
-                <div>Sản phẩm ({cartItems.length})</div>
-                <div>${(getCartTotal() / 100).toFixed(2)}</div>
-              </div>
-              <div className="flex items-center justify-between mb-4 text-sm">
-                <div>Vận chuyển:</div>
-                <div>Miễn phí</div>
-              </div>
-
-              <div className="border-b border-gray-300" />
-
-              <div className="flex items-center justify-between mt-4 mb-1 text-lg font-semibold">
-                <div>Tổng cộng</div>
-                <div>${(getCartTotal() / 100).toFixed(2)}</div>
-              </div>
-              {appliedDiscount && (
-                <div className="text-sm text-green-600 mt-2">
-                  Applied discount: {appliedDiscount.code} (-{appliedDiscount.discountPercent}
-                  %)
+                <div className="flex items-center justify-between mt-4 text-sm mb-1">
+                  <div>Sản phẩm ({cartItems.length})</div>
+                  <div>${(getCartTotal() / 100).toFixed(2)}</div>
                 </div>
-              )}
+                <div className="flex items-center justify-between mb-4 text-sm">
+                  <div>Vận chuyển:</div>
+                  <div>Miễn phí</div>
+                </div>
+
+                <div className="border-b border-gray-300" />
+
+                <div className="flex items-center justify-between mt-4 mb-1 text-lg font-semibold">
+                  <div>Tổng cộng</div>
+                  <div>${(getCartTotal() / 100).toFixed(2)}</div>
+                </div>
+                {appliedDiscount && (
+                  <div className="text-sm text-green-600 mt-2">
+                    Applied discount: {appliedDiscount.code} (-{appliedDiscount.discountPercent}
+                    %)
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
 
-    <Footer />
-  </div>
-);
+      <div className="mt-10 text-white">
+        <div className="max-w-[95%] mx-auto">
+          <Footer />
+        </div>
+      </div>
+    </div>
+  );
 }

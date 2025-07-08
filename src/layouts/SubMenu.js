@@ -85,7 +85,7 @@ export default function SubMenu() {
 
   return (
     <div id="SubMenu" className="bg-white">
-      <div className="flex items-center justify-center w-full mx-auto max-w-[1300px] h-10 px-4">
+      <div className="flex items-center justify-center w-full mx-auto max-w-[100%] h-10 px-4">
         <nav>
           <ul className="flex items-center space-x-6">
             {loading ? (
