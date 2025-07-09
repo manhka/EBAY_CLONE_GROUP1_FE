@@ -18,10 +18,15 @@ export const CartProvider = ({ children }) => {
       setIsLoading(false);
       return;
     }
+
     try {
       setIsLoading(true);
       const { data } = await apiInterceptor.get('/cart');
-      setCart(data.success ? data.cart : null);
+      if (data.success && data.cart) {
+        setCart(data.cart);
+      } else {
+        setCart(null);
+      }
     } catch (error) {
       console.error("CartContext: Failed to fetch cart", error);
       setCart(null);
@@ -34,7 +39,6 @@ export const CartProvider = ({ children }) => {
     fetchCart();
   }, [fetchCart]);
 
-  // ✅ HÀM addToCart ĐÃ ĐƯỢC SỬA LẠI ĐỂ GỌI API
   const addToCart = async (productId, quantity = 1) => {
     try {
       const { data } = await apiInterceptor.post('/cart/items', { productId, quantity });
@@ -76,9 +80,6 @@ export const CartProvider = ({ children }) => {
     }
   };
 
-  // ✅ BỎ ĐI state `cartCount` và hàm `updateCartCount`
-
-  // 3. Cung cấp các giá trị cho toàn bộ ứng dụng
   const value = {
     cart,
     isLoading,

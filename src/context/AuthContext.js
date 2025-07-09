@@ -1,15 +1,12 @@
 import React, { useState, useEffect, useContext, createContext } from "react";
-import { useNavigate } from "react-router-dom";
 import apiInterceptor, { setAuthCallbacks } from "../services/apiInterceptor";
 
-// Tạo AuthContext
 const AuthContext = createContext(null);
 
 export const useAuth = () => useContext(AuthContext);
 
 function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const navigate = useNavigate();
 
   const login = (userId) => {
     setUser({ id: userId });
@@ -17,9 +14,7 @@ function AuthProvider({ children }) {
 
   const logout = () => {
     setUser(null);
-    if (window.location.pathname !== "/login") {
-      navigate("/login");
-    }
+    localStorage.removeItem("currentUser");
     console.log("User logged out or session expired.");
   };
 
@@ -39,15 +34,23 @@ function AuthProvider({ children }) {
         if (response.data.isAuthenticated) {
           login(response.data.userId);
         } else {
-          logout();
+          logout(); // chỉ xóa session, không redirect
         }
       } catch (error) {
         console.error("Error checking session:", error);
-        logout();
+        logout(); // không điều hướng
       }
     };
+
     checkSession();
-  }, [navigate]);
+  }, []);
+
+  useEffect(() => {
+    const handleForcedLogout = () => logout();
+    window.addEventListener("auth:logout", handleForcedLogout);
+    return () => window.removeEventListener("auth:logout", handleForcedLogout);
+  }, []);
+
   return (
     <AuthContext.Provider value={{ user, login, logout }}>
       {children}

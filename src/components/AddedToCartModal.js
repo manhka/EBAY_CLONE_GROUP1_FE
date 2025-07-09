@@ -51,12 +51,14 @@ export default function AddedToCartModal({ visible, onClose, product }) {
         <div className="mt-6 flex flex-col sm:flex-row gap-4">
           <Link 
             to="/cart" 
+            onClick={() => window.location.href = "/cart"}
             className="flex-1 text-center bg-white text-blue-600 font-bold py-3 rounded-full border-2 border-blue-600 hover:bg-blue-50"
           >
             See in cart
           </Link>
           <Link 
             to="/checkout" 
+            onClick={() => window.location.href = "/checkout"}
             className="flex-1 text-center bg-blue-600 text-white font-bold py-3 rounded-full hover:bg-blue-700"
           >
             Checkout 1 item

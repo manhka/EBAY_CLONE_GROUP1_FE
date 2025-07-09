@@ -77,6 +77,7 @@ function LoginScreen() {
       setErrorMessage("");
       setTimeout(() => {
         navigate("/");
+        window.location.reload(); 
       }, 1500);
     } catch (error) {
       console.error("Login error:", error);
