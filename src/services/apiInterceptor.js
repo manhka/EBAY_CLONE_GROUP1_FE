@@ -19,12 +19,12 @@ const apiInterceptor = axios.create({
 let isRefreshing = false;
 let failedQueue = [];
 
-const processQueue = (error, token = null) => {
+const processQueue = (error) => {
   failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error);
     } else {
-      prom.resolve(token);
+      prom.resolve();
     }
   });
   failedQueue = [];
@@ -32,8 +32,7 @@ const processQueue = (error, token = null) => {
 
 apiInterceptor.interceptors.request.use(
   async (config) => {
-    console.log("Request Interceptor: config", config);
-
+    console.log("Request Interceptor:", config.method, config.url);
     if (
       config.method !== "get" &&
       config.method !== "head" &&
@@ -44,7 +43,6 @@ apiInterceptor.interceptors.request.use(
         try {
           csrfToken = await fetchCsrfToken();
         } catch (error) {
-          console.warn("Failed to fetch CSRF token for request:", config.url);
           throw new Error("CSRF token is missing.");
         }
       }
@@ -56,17 +54,14 @@ apiInterceptor.interceptors.request.use(
 );
 
 apiInterceptor.interceptors.response.use(
-  (response) => {
-    console.log("Response Interceptor: response", response);
-    return response;
-  },
+  (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
     if (
       error.response &&
       error.response.status === 401 &&
-      error.response.data.msg === "NoAccessTokenInCookie" &&
+      error.response.data?.msg === "NoAccessTokenInCookie" &&
       !originalRequest._retry
     ) {
       originalRequest._retry = true;
@@ -74,9 +69,7 @@ apiInterceptor.interceptors.response.use(
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
-        })
-          .then(() => apiInterceptor(originalRequest))
-          .catch((err) => Promise.reject(err));
+        }).then(() => apiInterceptor(originalRequest));
       }
 
       isRefreshing = true;
@@ -87,36 +80,25 @@ apiInterceptor.interceptors.response.use(
           if (!csrfToken) {
             csrfToken = await fetchCsrfToken();
           }
-          const refreshResponse = await apiInterceptor.post(
-            "/auth/refresh-token",
-            {},
-            {
-              headers: {
-                "X-CSRF-Token": csrfToken,
-              },
-            }
-          );
+
+          await apiInterceptor.post("/auth/refresh-token", {}, {
+            headers: {
+              "X-CSRF-Token": csrfToken,
+            },
+          });
 
           isRefreshing = false;
           processQueue(null);
           resolve(apiInterceptor(originalRequest));
         } catch (refreshError) {
           isRefreshing = false;
-          processQueue(refreshError, null);
-          console.error(
-            "Error refreshing token:",
-            refreshError.response?.data?.msg || refreshError.message
-          );
+          processQueue(refreshError);
           window.dispatchEvent(new Event("auth:logout"));
           reject(refreshError);
         }
       });
     }
 
-    console.error(
-      "Authentication error:",
-      error.response?.data?.msg || error.message
-    );
     return Promise.reject(error);
   }
 );

@@ -1,5 +1,5 @@
 import React from "react";
-import { Routes, Route, Link } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 
 import RegisterScreen from "./pages/RegisterScreen";
 import LoginScreen from "./pages/LoginScreen";
@@ -7,13 +7,15 @@ import VerifyPinScreen from "./pages/VerifyPinScreen";
 import HomePage from "./pages/HomePage";
 import ProfileScreen from "./pages/ProfileScreen";
 import CartScreen from "./pages/CartScreen";
-import { CartProvider } from "./context/cartContext";
 import ProductDetail from "./pages/ProductScreen";
 import SearchResults from "./pages/SearchScreen";
 
+import { AuthProvider } from "./context/AuthContext";
+import { CartProvider } from "./context/cartContext";
+
 function App() {
   return (
-    <div>
+    <AuthProvider>
       <CartProvider>
         <Routes>
           <Route path="/" element={<HomePage />} />
@@ -26,8 +28,7 @@ function App() {
           <Route path="/search" element={<SearchResults />} />
         </Routes>
       </CartProvider>
-
-    </div>
+    </AuthProvider>
   );
 }
 

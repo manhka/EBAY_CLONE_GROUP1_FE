@@ -9,6 +9,7 @@ import Footer from "../layouts/Footer";
 import SimilarProducts from "../components/SimilarProduct";
 // import CommentSection from "../../../components/CommentSection";
 // import DiscountCode from "../../../components/DiscountCode";
+import AddedToCartModal from "../components/AddedToCartModal";
 import apiInterceptor from "../services/apiInterceptor";
 // Import components
 
@@ -130,9 +131,10 @@ export default function ProductScreen() {
   const [appliedDiscount, setAppliedDiscount] = useState(null);
   const currentUser = JSON.parse(localStorage.getItem("currentUser"));
   const [store, setStore] = useState(null);
+  const [isCartModalVisible, setCartModalVisible] = useState(false);
 
-  const API_BASE_URL = "http://localhost:3000";
-  const token = localStorage.getItem('token');
+  // const API_BASE_URL = "http://localhost:3000";
+  // const token = localStorage.getItem('token');
 
   const paymentMethods = [
     { name: 'Klarna', imgSrc: 'https://www.svgrepo.com/show/508697/klarna.svg' },
@@ -146,12 +148,9 @@ export default function ProductScreen() {
   // Check if product is in cart
   const checkItemInCart = async () => {
     if (!currentUser) return false;
-
     try {
       const { data } = await apiInterceptor.get('/cart');
-
       if (!data.success || !data.cart) return false;
-
       return data.cart.items?.some(item => item.productId?._id === id) || false;
     } catch (error) {
       console.error("Error checking cart:", error);
@@ -164,10 +163,11 @@ export default function ProductScreen() {
     const wishlist = JSON.parse(localStorage.getItem("wishlist")) || [];
     return wishlist.some((item) => item.id === id);
   };
+
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [id]);
-  // Fetch product data, cart status, and bid history
+
   useEffect(() => {
     const fetchProductAndCartStatus = async () => {
       // Nếu không có id, không làm gì cả
@@ -175,7 +175,7 @@ export default function ProductScreen() {
 
       setIsLoading(true);
       try {
-        const response = await apiInterceptor.get(`/product/${id}`);
+        const response = await apiInterceptor.get(`/products/${id}`);
         const { product, store } = response.data;
         setProduct(product);
         setStore(store);
@@ -221,28 +221,16 @@ export default function ProductScreen() {
           quantity: quantity
         });
         setIsItemAdded(true);
-        alert("Item added to cart");
+        setCartModalVisible(true); 
       }
-      // bên trong hàm handleCartAction
-
     } catch (error) {
-      // 1. Log toàn bộ object lỗi ra để xem cấu trúc của nó
       console.error("💥 FULL CART ACTION ERROR:", error);
-
-      // 2. Kiểm tra các loại lỗi khác nhau để đưa ra thông báo chính xác hơn
       if (error.response) {
-        // Lỗi có phản hồi từ server (ví dụ: 400, 401, 404, 500)
-        // Đây là trường hợp backend trả về lỗi một cách "có kiểm soát"
-        console.error("Server Response Data:", error.response.data);
-        console.error("Server Response Status:", error.response.status);
         alert(error.response.data.message || "Lỗi từ server, vui lòng thử lại.");
       } else if (error.request) {
-        // Lỗi request đã được gửi đi nhưng không nhận được phản hồi
-        // Đây thường là lỗi MẠNG hoặc server backend BỊ SẬP
         console.error("No response received:", error.request);
         alert("Lỗi mạng. Vui lòng kiểm tra kết nối và đảm bảo server backend đang chạy.");
       } else {
-        // Lỗi xảy ra khi thiết lập request
         console.error("Error setting up request:", error.message);
         alert("Đã có lỗi xảy ra khi gửi yêu cầu.");
       }
@@ -253,18 +241,15 @@ export default function ProductScreen() {
 
 
 
-  // Toggle wishlist status
   const toggleWishlist = async () => {
     if (!product) return; // Đảm bảo có thông tin sản phẩm
 
     try {
       if (isWishlist) {
-        // Gửi request để XÓA sản phẩm khỏi wishlist ở backend
         await apiInterceptor.delete(`/wishlist/${product._id}`);
         setIsWishlist(false);
         alert("Removed from wishlist");
       } else {
-        // Gửi request để THÊM sản phẩm vào wishlist ở backend
         await apiInterceptor.post('/wishlist', { productId: product._id });
         setIsWishlist(true);
         alert("Added to wishlist");
@@ -279,7 +264,6 @@ export default function ProductScreen() {
     setAppliedDiscount(discount);
   };
 
-  // Loading state
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-100">
@@ -298,7 +282,6 @@ export default function ProductScreen() {
     );
   }
 
-  // Product not found
   if (!product) {
     return (
       <div className="min-h-screen bg-gray-100">
@@ -659,6 +642,11 @@ export default function ProductScreen() {
           <Footer />
         </div>
       </div>
+      <AddedToCartModal 
+      visible={isCartModalVisible}
+      onClose={() => setCartModalVisible(false)}
+      product={product}
+    />
     </div>
   );
 }

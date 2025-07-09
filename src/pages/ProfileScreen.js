@@ -3,12 +3,14 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
 import axios from "axios";
+import { useAuth } from "../context/AuthContext";
 import useCsrfToken from "../hooks/useCsrfToken";
 import apiInterceptor from "../services/apiInterceptor";
 import "../assets/css/ProfileStyle.css";
 
 const ProfileScreen = () => {
   const navigate = useNavigate();
+  const { user, login } = useAuth();
   const location = useLocation();
   const { csrfToken, loadingCsrf, errorCsrf, fetchCsrfToken } = useCsrfToken();
 
@@ -70,7 +72,7 @@ const ProfileScreen = () => {
         setLoading(true);
         setErrorMessage(null);
 
-        const response = await apiInterceptor.get("/user-profile/", {
+        const response = await apiInterceptor.get("/users/user-profile/", {
           withCredentials: true,
         });
 
@@ -288,7 +290,7 @@ const ProfileScreen = () => {
     }
 
     try {
-      const url = "/user-profile/";
+      const url = "/users/user-profile/";
       const response = await apiInterceptor[profileExists ? "put" : "post"](
         url,
         formData,

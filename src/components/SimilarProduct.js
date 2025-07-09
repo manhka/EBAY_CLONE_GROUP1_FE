@@ -74,7 +74,7 @@ export default function SimilarProducts({ categoryId, currentProductId }) {
     const fetchProducts = async () => {
       setIsLoading(true);
       try {
-        const res = await apiInterceptor.get(`/product/category/${categoryId}`);
+        const res = await apiInterceptor.get(`/categories/${categoryId}/products`);
         const similar = res.data.filter(p => p._id !== currentProductId);
         setProducts(similar);
       } catch (error) {
