@@ -1,6 +1,6 @@
 import React, { useState, useEffect, createContext } from "react";
 import { useNavigate } from "react-router-dom";
-import apiInterceptor, { setAuthCallbacks } from "../services/apiInterceptor";
+import apiInterceptor from "../services/apiInterceptor";
 
 // Tạo AuthContext
 const AuthContext = createContext(null);
@@ -25,10 +25,12 @@ function AuthProvider({ children }) {
   };
 
   useEffect(() => {
-    setAuthCallbacks({
-      onRefreshSuccess: handleTokenRefreshSuccess,
-      onLogout: logout,
-    });
+    // Listen for auth events
+    const handleAuthLogout = () => {
+      logout();
+    };
+
+    window.addEventListener('auth:logout', handleAuthLogout);
 
     const checkSession = async () => {
       try {
@@ -43,7 +45,16 @@ function AuthProvider({ children }) {
         logout();
       }
     };
+
+    // Check session on component mount
+    checkSession();
+
+    // Cleanup event listener
+    return () => {
+      window.removeEventListener('auth:logout', handleAuthLogout);
+    };
   }, [navigate]);
+
   return (
     <AuthContext.Provider value={{ user, login, logout }}>
       {children}
