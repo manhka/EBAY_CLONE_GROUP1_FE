@@ -8,7 +8,7 @@ const DiscountCode = ({ onApplyDiscount, productId }) => {
   const [selectedDiscount, setSelectedDiscount] = useState(null);
   const [availableDiscounts, setAvailableDiscounts] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(''); // Dùng để hiển thị lỗi ngay trên UI
+  const [error, setError] = useState('');
 
   // Fetch available discount codes for the product
   useEffect(() => {
@@ -45,20 +45,19 @@ const DiscountCode = ({ onApplyDiscount, productId }) => {
     setSelectedDiscount(null);
 
     try {
-      // ✅ SỬA LẠI: Dùng apiInterceptor và đúng đường dẫn
       const { data } = await apiInterceptor.post('/coupons/apply', {
         productId,
         code: discountCode,
       });
 
       if (data.success) {
-        setSelectedDiscount(data.discount); // Lưu lại thông tin mã đã áp dụng
-        onApplyDiscount(data.discount); // Gọi hàm callback của component cha
+        setSelectedDiscount(data.discount);
+        onApplyDiscount(data.discount);
       }
     } catch (err) {
       const errorMessage = err.response?.data?.message || 'Mã giảm giá không hợp lệ hoặc đã hết hạn.';
-      setError(errorMessage); // Hiển thị lỗi trên UI thay vì alert
-      onApplyDiscount(null); // Reset mã giảm giá ở component cha nếu thất bại
+      setError(errorMessage);
+      onApplyDiscount(null);
     } finally {
       setIsLoading(false);
     }
@@ -75,7 +74,7 @@ const DiscountCode = ({ onApplyDiscount, productId }) => {
         <FiTag className="text-gray-600" />
         <span className="text-sm font-medium">Mã giảm giá</span>
       </div>
-      
+
       <div className="mt-2 flex gap-2">
         <div className="relative flex-1">
           <input
@@ -85,16 +84,32 @@ const DiscountCode = ({ onApplyDiscount, productId }) => {
             placeholder="Nhập mã"
             className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
             onFocus={() => setShowDiscountList(true)}
-            onBlur={() => setTimeout(() => setShowDiscountList(false), 200)} // Thêm delay để kịp click
+            onBlur={() => setTimeout(() => setShowDiscountList(false), 200)}
           />
-          
+
           {showDiscountList && (
             <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded shadow-lg max-h-48 overflow-y-auto">
-              {/* ... JSX hiển thị danh sách mã giảm giá ... */}
+              {availableDiscounts.length > 0 ? (
+                availableDiscounts.map((discount) => (
+                  <div
+                    key={discount.code}
+                    className="p-2 hover:bg-gray-100 cursor-pointer"
+                    onClick={() => handleSelectDiscount(discount)}
+                  >
+                    <div className="font-medium text-[#0053A0]">{discount.code}</div>
+                    <div className="text-sm text-gray-600">{discount.description}</div>
+                    <div className="text-xs text-gray-500">
+                      Giảm {discount.discountPercent}% - Hết hạn: {new Date(discount.endDate).toLocaleDateString('vi-VN')}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="p-2 text-sm text-gray-500">Không có mã giảm giá nào</div>
+              )}
             </div>
           )}
         </div>
-        
+
         <button
           onClick={handleApplyDiscount}
           disabled={isLoading || !discountCode}
@@ -104,7 +119,6 @@ const DiscountCode = ({ onApplyDiscount, productId }) => {
         </button>
       </div>
 
-      {/* ✅ HIỂN THỊ LỖI HOẶC THÀNH CÔNG TRỰC TIẾP */}
       {error && (
         <div className="mt-2 text-sm text-red-600">{error}</div>
       )}

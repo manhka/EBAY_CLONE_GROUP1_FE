@@ -9,26 +9,42 @@ import ProfileScreen from "./pages/ProfileScreen";
 import CartScreen from "./pages/CartScreen";
 import ProductDetail from "./pages/ProductScreen";
 import SearchResults from "./pages/SearchScreen";
+import CheckoutScreen from "./pages/CheckoutScreen";
+import OrderSuccessScreen from "./pages/OrderSuccessScreen";
 
 import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/cartContext";
 
+import { PayPalScriptProvider } from "@paypal/react-paypal-js";
+
+const PAYPAL_CLIENT_ID = "AfhneoblmV1ypvz4NM1iiPCDrShBEzKIwwt_LoqfX1h5YpDoRJiRL3bo8nakvXN_3Wze76QqSrmbwTW3";
+
+const initialPayPalOptions = {
+  "client-id": PAYPAL_CLIENT_ID,
+  currency: "USD",
+  intent: "capture",
+};
+
 function App() {
   return (
-    <AuthProvider>
-      <CartProvider>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/register" element={<RegisterScreen />} />
-          <Route path="/verify-pin" element={<VerifyPinScreen />} />
-          <Route path="/login" element={<LoginScreen />} />
-          <Route path="/profile" element={<ProfileScreen />} />
-          <Route path="/cart" element={<CartScreen />} />
-          <Route path="/product/:id" element={<ProductDetail />} />
-          <Route path="/search" element={<SearchResults />} />
-        </Routes>
-      </CartProvider>
-    </AuthProvider>
+    <PayPalScriptProvider options={initialPayPalOptions}>
+      <AuthProvider>
+        <CartProvider>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/register" element={<RegisterScreen />} />
+            <Route path="/verify-pin" element={<VerifyPinScreen />} />
+            <Route path="/login" element={<LoginScreen />} />
+            <Route path="/profile" element={<ProfileScreen />} />
+            <Route path="/cart" element={<CartScreen />} />
+            <Route path="/product/:id" element={<ProductDetail />} />
+            <Route path="/search" element={<SearchResults />} />
+            <Route path="/checkout" element={<CheckoutScreen />} />
+            <Route path="/success" element={<OrderSuccessScreen />} />
+          </Routes>
+        </CartProvider>
+      </AuthProvider>
+    </PayPalScriptProvider>
   );
 }
 

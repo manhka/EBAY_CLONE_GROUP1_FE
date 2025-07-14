@@ -101,7 +101,7 @@ function OrderSummary({ items, profile }) {
 
   return (
     <div className="lg:col-span-1">
-      <div className="p-6 sticky top-4 rounded-lg">
+      <div className="p-2 sticky rounded-lg">
         <div className="space-y-2 text-gray-700">
           <div className="flex justify-between">
             <span>Items ({items.length})</span>
@@ -339,7 +339,7 @@ export default function CartScreen() {
               </div>
             ))}
           </div>
-          <div className="w-full lg:w-[320px]">
+          <div className="w-full lg:w-[380px] sticky top-8">
             <OrderSummary items={cart.items} profile={profile} />
           </div>
         </div>

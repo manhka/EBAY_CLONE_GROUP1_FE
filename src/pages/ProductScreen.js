@@ -51,7 +51,6 @@ const ProductImageGallery = ({ images, title }) => {
   );
 };
 
-
 const PurchaseActions = ({
   product,
   quantity,
@@ -61,6 +60,7 @@ const PurchaseActions = ({
   isItemAdded,
   isWishlist,
   isLoading,
+  handleBuyNow
 }) => {
   return (
     <div className="rounded-lg p-4">
@@ -77,7 +77,7 @@ const PurchaseActions = ({
       </div>
 
       <div className="flex flex-col gap-2">
-        <button className="w-full bg-blue-600 text-white font-bold py-3 rounded-full hover:bg-blue-700">
+        <button onClick={handleBuyNow} className="w-full bg-blue-600 text-white font-bold py-3 rounded-full hover:bg-blue-700">
           Buy It Now
         </button>
         <button
@@ -90,7 +90,7 @@ const PurchaseActions = ({
               ? 'bg-white text-red-600 border-red-600 hover:bg-red-50'
               : 'bg-white text-blue-600 border-blue-600 hover:bg-blue-50'
             }
-      ${isLoading ? 'opacity-50 cursor-not-allowed' : ''} // Style khi đang loading
+      ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}
     `}
         >{isLoading
           ? 'Processing...'
@@ -132,9 +132,6 @@ export default function ProductScreen() {
   const currentUser = JSON.parse(localStorage.getItem("currentUser"));
   const [store, setStore] = useState(null);
   const [isCartModalVisible, setCartModalVisible] = useState(false);
-
-  // const API_BASE_URL = "http://localhost:3000";
-  // const token = localStorage.getItem('token');
 
   const paymentMethods = [
     { name: 'Klarna', imgSrc: 'https://www.svgrepo.com/show/508697/klarna.svg' },
@@ -199,6 +196,34 @@ export default function ProductScreen() {
     fetchProductAndCartStatus();
   }, [id, currentUser?._id]);
 
+  const handleBuyNow = async () => {
+    if (!currentUser) {
+      alert("Please login to continue");
+      navigate("/login");
+      return;
+    }
+
+    try {
+      const tempOrder = {
+        items: [
+          {
+            productId: id,
+            quantity: 1
+          },
+        ],
+        isBuyNow: true,
+      };
+
+      localStorage.setItem("buyNowOrder", JSON.stringify(tempOrder));
+
+      navigate("/checkout");
+    } catch (error) {
+      console.error("Buy Now Error:", error);
+      alert("Something went wrong. Please try again.");
+    }
+  };
+
+
   // Handle cart actions (add/remove)
   const handleCartAction = async () => {
     if (!currentUser) {
@@ -221,7 +246,7 @@ export default function ProductScreen() {
           quantity: quantity
         });
         setIsItemAdded(true);
-        setCartModalVisible(true); 
+        setCartModalVisible(true);
       }
     } catch (error) {
       console.error("💥 FULL CART ACTION ERROR:", error);
@@ -423,6 +448,7 @@ export default function ProductScreen() {
                   toggleWishlist={toggleWishlist}
                   isItemAdded={isItemAdded}
                   isWishlist={isWishlist}
+                  handleBuyNow={handleBuyNow}
                 />
               </div>
 
@@ -642,11 +668,11 @@ export default function ProductScreen() {
           <Footer />
         </div>
       </div>
-      <AddedToCartModal 
-      visible={isCartModalVisible}
-      onClose={() => setCartModalVisible(false)}
-      product={product}
-    />
+      <AddedToCartModal
+        visible={isCartModalVisible}
+        onClose={() => setCartModalVisible(false)}
+        product={product}
+      />
     </div>
   );
 }
