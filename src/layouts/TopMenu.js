@@ -8,12 +8,12 @@ import { useAuth } from "../context/AuthContext";
 function CartHoverMenu() {
   const navigate = useNavigate();
   const { cart, cartItemCount, removeFromCart } = useCart();
+  const subtotal =
+    cart?.items?.reduce(
+      (sum, item) => sum + (item.productId?.price || 0) * item.quantity,
+      0
+    ) || 0;
 
-  const subtotal = cart?.items?.reduce(
-    (sum, item) => sum + (item.productId?.price || 0) * item.quantity, 0
-  ) || 0;
-
-  // Giao diện khi giỏ hàng trống
   if (cartItemCount === 0) {
     return (
       <div className="absolute top-full right-0 w-72 bg-white rounded-lg shadow-lg border z-50 p-6 text-center">
@@ -23,32 +23,44 @@ function CartHoverMenu() {
     );
   }
 
-  // Giao diện khi có sản phẩm
   return (
     <div className="absolute top-full right-0 w-80 bg-white rounded-lg shadow-lg z-50 p-4">
       <h3 className="font-bold text-lg text-gray-800 mb-3 px-2">Shopping cart</h3>
       <div className="max-h-64 overflow-y-auto">
-        {cart.items.map(item => (
-          item.productId && (
-            <div key={item._id} className="flex items-center gap-3 py-2 px-2 border-t">
-              <img
-                src={item.productId.images?.[0]}
-                alt={item.productId.title}
-                className="w-16 h-16 object-contain rounded border"
-              />
-              <div className="flex-grow">
-                <p className="text-sm text-gray-800 font-semibold line-clamp-2">{item.productId.title}</p>
-                <div className="flex justify-between items-center mt-1">
-                  <p className="text-sm text-gray-600">SL: {item.quantity}</p>
-                  <p className="text-sm font-bold">${((item.productId.price || 0) / 100).toFixed(2)}</p>
+        {cart.items.map(
+          (item) =>
+            item.productId && (
+              <div
+                key={item._id}
+                className="flex items-center gap-3 py-2 px-2 border-t"
+              >
+                <img
+                  src={item.productId.images?.[0]}
+                  alt={item.productId.title}
+                  className="w-16 h-16 object-contain rounded border"
+                />
+                <div className="flex-grow">
+                  <p className="text-sm text-gray-800 font-semibold line-clamp-2">
+                    {item.productId.title}
+                  </p>
+                  <div className="flex justify-between items-center mt-1">
+                    <p className="text-sm text-gray-600">
+                      SL: {item.quantity}
+                    </p>
+                    <p className="text-sm font-bold">
+                      ${((item.productId.price || 0) / 100).toFixed(2)}
+                    </p>
+                  </div>
                 </div>
+                <button
+                  onClick={() => removeFromCart(item.productId._id)}
+                  className="text-gray-400 hover:text-red-500"
+                >
+                  <Trash2 size={16} />
+                </button>
               </div>
-              <button onClick={() => removeFromCart(item.productId._id)} className="text-gray-400 hover:text-red-500">
-                <Trash2 size={16} />
-              </button>
-            </div>
-          )
-        ))}
+            )
+        )}
       </div>
       <div className="border-t mt-2 pt-3 px-2">
         <div className="flex justify-between items-center font-bold text-lg">
@@ -56,8 +68,18 @@ function CartHoverMenu() {
           <span>${(subtotal / 100).toFixed(2)}</span>
         </div>
         <div className="flex flex-col gap-2 mt-4">
-          <button onClick={() => navigate('/checkout')} className="w-full bg-blue-600 text-white font-bold py-2 rounded-full hover:bg-blue-700">Checkout</button>
-          <button onClick={() => navigate('/cart')} className="w-full bg-white text-blue-600 font-bold py-2 rounded-full border-2 border-gray-300 hover:bg-gray-100">View Cart</button>
+          <button
+            onClick={() => navigate("/checkout")}
+            className="w-full bg-blue-600 text-white font-bold py-2 rounded-full hover:bg-blue-700"
+          >
+            Checkout
+          </button>
+          <button
+            onClick={() => navigate("/cart")}
+            className="w-full bg-white text-blue-600 font-bold py-2 rounded-full border-2 border-gray-300 hover:bg-gray-100"
+          >
+            View Cart
+          </button>
         </div>
       </div>
     </div>
@@ -80,12 +102,15 @@ export const getImageUrl = (avatarValue) => {
 export default function TopMenu() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-  const { cartItemCount } = useCart();
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
 
+  const { cartItemCount } = useCart();
   const navigate = useNavigate();
   const menuRef = useRef(null);
+  const notifRef = useRef(null);
 
-  // Load user từ localStorage
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
@@ -115,8 +140,14 @@ export default function TopMenu() {
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(event.target) &&
+        notifRef.current &&
+        !notifRef.current.contains(event.target)
+      ) {
         setIsMenuOpen(false);
+        setShowNotifications(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -136,6 +167,24 @@ export default function TopMenu() {
     }
   };
 
+  const loadNotifications = async () => {
+    setLoadingNotifications(true);
+    try {
+      const res = await apiInterceptor.get("/user-activity/activity");
+      setNotifications(res.data || []);
+    } catch (error) {
+      console.error("Failed to load notifications:", error);
+    } finally {
+      setLoadingNotifications(false);
+    }
+  };
+
+  const toggleNotifications = () => {
+    if (!showNotifications) {
+      loadNotifications();
+    }
+    setShowNotifications(!showNotifications);
+  };
 
   const UserControl = () => {
     if (currentUser) {
@@ -145,8 +194,16 @@ export default function TopMenu() {
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             className="flex items-center text-gray-500 hover:text-blue-600"
           >
-            Hi, <span className="text-blue-600 font-semibold ml-1">{currentUser.username}</span>
-            <ChevronDown size={16} className={`ml-1 transition-transform ${isMenuOpen ? "rotate-180" : ""}`} />
+            Hi,{" "}
+            <span className="text-blue-600 font-semibold ml-1">
+              {currentUser.username}
+            </span>
+            <ChevronDown
+              size={16}
+              className={`ml-1 transition-transform ${
+                isMenuOpen ? "rotate-180" : ""
+              }`}
+            />
           </button>
           {isMenuOpen && (
             <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-lg shadow-lg border z-50">
@@ -157,8 +214,12 @@ export default function TopMenu() {
                   className="w-12 h-12 rounded-full object-cover"
                 />
                 <div>
-                  <div className="font-bold text-black">{currentUser.username}</div>
-                  <div className="text-sm text-gray-500">{currentUser.email}</div>
+                  <div className="font-bold text-black">
+                    {currentUser.username}
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    {currentUser.email}
+                  </div>
                 </div>
               </div>
               <div className="border-t border-gray-200">
@@ -183,8 +244,14 @@ export default function TopMenu() {
     }
     return (
       <span className="text-gray-500">
-        Hi! <Link to="/login" className="text-blue-600 hover:underline">Sign in</Link> or{" "}
-        <Link to="/register" className="text-blue-600 hover:underline">register</Link>
+        Hi!{" "}
+        <Link to="/login" className="text-blue-600 hover:underline">
+          Sign in
+        </Link>{" "}
+        or{" "}
+        <Link to="/register" className="text-blue-600 hover:underline">
+          register
+        </Link>
       </span>
     );
   };
@@ -193,34 +260,94 @@ export default function TopMenu() {
     <div className="bg-white text-xs border-b">
       <div className="flex items-center justify-between max-w-[100%] mx-auto h-8 px-4">
         <ul className="flex items-center space-x-4">
-          <li><UserControl /></li>
-          <li><Link to="/daily-deals" className="text-gray-500 hover:text-blue-600">Daily Deals</Link></li>
-          <li><Link to="/brand-outlet" className="text-gray-500 hover:text-blue-600">Brand Outlet</Link></li>
-          <li><Link to="/help" className="text-gray-500 hover:text-blue-600">Help & Contact</Link></li>
+          <li>
+            <UserControl />
+          </li>
+          <li>
+            <Link
+              to="/daily-deals"
+              className="text-gray-500 hover:text-blue-600"
+            >
+              Daily Deals
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/brand-outlet"
+              className="text-gray-500 hover:text-blue-600"
+            >
+              Brand Outlet
+            </Link>
+          </li>
+          <li>
+            <Link to="/help" className="text-gray-500 hover:text-blue-600">
+              Help & Contact
+            </Link>
+          </li>
         </ul>
 
         <ul className="flex items-center space-x-4">
-          <li><Link to="/sell" className="text-gray-500 hover:text-blue-600">Sell</Link></li>
-          <li className="flex items-center">
-            <Link to="/wishlist" className="text-gray-500 hover:text-blue-600">Watchlist</Link>
-            <ChevronDown size={14} className="text-gray-500 ml-1" />
-          </li>
-          <li className="flex items-center">
-            <Link to="/my-ebay" className="text-gray-500 hover:text-blue-600">My eBay</Link>
-            <ChevronDown size={14} className="text-gray-500 ml-1" />
-          </li>
-          <li className="relative">
-            <Link to="/notifications" className="text-gray-500 hover:text-gray-900">
-              <Bell size={18} />
+          <li>
+            <Link to="/sell" className="text-gray-500 hover:text-blue-600">
+              Sell
             </Link>
           </li>
-          <li
-            className="relative group">
-            <Link to="/cart" className="relative text-gray-500 hover:text-gray-900 p-2 block">
+          <li className="flex items-center">
+            <Link to="/wishlist" className="text-gray-500 hover:text-blue-600">
+              Watchlist
+            </Link>
+            <ChevronDown size={14} className="text-gray-500 ml-1" />
+          </li>
+          <li className="flex items-center">
+            <Link to="/my-ebay" className="text-gray-500 hover:text-blue-600">
+              My eBay
+            </Link>
+            <ChevronDown size={14} className="text-gray-500 ml-1" />
+          </li>
+          <li className="relative" ref={notifRef}>
+            <button
+              onClick={toggleNotifications}
+              className="text-gray-500 hover:text-gray-900 p-2"
+            >
+              <Bell size={18} />
+            </button>
+            {showNotifications && (
+              <div className="absolute top-full right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border z-50">
+                <div className="p-4 font-bold border-b">Notifications</div>
+                {loadingNotifications ? (
+                  <div className="p-4 text-sm text-gray-500">Loading...</div>
+                ) : notifications.length === 0 ? (
+                  <div className="p-4 text-sm text-gray-500">
+                    No notifications
+                  </div>
+                ) : (
+                  <ul className="max-h-80 overflow-y-auto">
+                    {notifications.map((n, i) => (
+                      <li
+                        key={i}
+                        className="px-4 py-2 hover:bg-gray-50 border-b last:border-b-0"
+                      >
+                        <p className="text-sm font-medium">{n.title}</p>
+                        <p className="text-xs text-gray-500">{n.message}</p>
+                        <p className="text-[10px] text-gray-400">
+                          {new Date(n.date).toLocaleString()}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </li>
+          <li className="relative group">
+            <Link
+              to="/cart"
+              className="relative text-gray-500 hover:text-gray-900 p-2 block"
+            >
               <ShoppingCart size={18} />
               {cartItemCount > 0 && (
                 <span className="absolute -top-0 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-white text-[9px] font-bold">
-                  {cartItemCount > 9 ? '9+' : cartItemCount}
+                  {cartItemCount > 9 ? "9+" : cartItemCount}
                 </span>
               )}
             </Link>
