@@ -7,6 +7,7 @@ import MainHeader from "../layouts/Header";
 import SubMenu from "../layouts/SubMenu";
 import Footer from "../layouts/Footer";
 import SimilarProducts from "../components/SimilarProduct";
+import ReviewSection from "../components/ReviewSection";
 // import CommentSection from "../../../components/CommentSection";
 // import DiscountCode from "../../../components/DiscountCode";
 import AddedToCartModal from "../components/AddedToCartModal";
@@ -657,7 +658,7 @@ export default function ProductScreen() {
 
         {/* Comment Section */}
         <div className="mt-6">
-          {/* <CommentSection productId={id} /> */}
+          <ReviewSection productId={id} />
         </div>
 
         {/* Similar Products Section */}
