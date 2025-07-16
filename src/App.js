@@ -1,14 +1,50 @@
 import React from "react";
-import { Routes, Route, Link } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
+
+import RegisterScreen from "./pages/RegisterScreen";
+import LoginScreen from "./pages/LoginScreen";
+import VerifyPinScreen from "./pages/VerifyPinScreen";
 import HomePage from "./pages/HomePage";
+import ProfileScreen from "./pages/ProfileScreen";
+import CartScreen from "./pages/CartScreen";
+import ProductDetail from "./pages/ProductScreen";
+import SearchResults from "./pages/SearchScreen";
+import CheckoutScreen from "./pages/CheckoutScreen";
+import OrderSuccessScreen from "./pages/OrderSuccessScreen";
+
+import { AuthProvider } from "./context/AuthContext";
+import { CartProvider } from "./context/cartContext";
+
+import { PayPalScriptProvider } from "@paypal/react-paypal-js";
+
+const PAYPAL_CLIENT_ID = "AfhneoblmV1ypvz4NM1iiPCDrShBEzKIwwt_LoqfX1h5YpDoRJiRL3bo8nakvXN_3Wze76QqSrmbwTW3";
+
+const initialPayPalOptions = {
+  "client-id": PAYPAL_CLIENT_ID,
+  currency: "USD",
+  intent: "capture",
+};
 
 function App() {
   return (
-    <div>
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-      </Routes>
-    </div>
+    <PayPalScriptProvider options={initialPayPalOptions}>
+      <AuthProvider>
+        <CartProvider>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/register" element={<RegisterScreen />} />
+            <Route path="/verify-pin" element={<VerifyPinScreen />} />
+            <Route path="/login" element={<LoginScreen />} />
+            <Route path="/profile" element={<ProfileScreen />} />
+            <Route path="/cart" element={<CartScreen />} />
+            <Route path="/product/:id" element={<ProductDetail />} />
+            <Route path="/search" element={<SearchResults />} />
+            <Route path="/checkout" element={<CheckoutScreen />} />
+            <Route path="/success" element={<OrderSuccessScreen />} />
+          </Routes>
+        </CartProvider>
+      </AuthProvider>
+    </PayPalScriptProvider>
   );
 }
 
