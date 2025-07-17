@@ -23,10 +23,12 @@ function AuthProvider({ children }) {
   };
 
   useEffect(() => {
-    setAuthCallbacks({
-      onRefreshSuccess: handleTokenRefreshSuccess,
-      onLogout: logout,
-    });
+    // Listen for auth events
+    const handleAuthLogout = () => {
+      logout();
+    };
+
+    window.addEventListener('auth:logout', handleAuthLogout);
 
     const checkSession = async () => {
       try {

@@ -17,6 +17,10 @@ import {
   FiTrendingUp,
   FiShoppingCart,
   FiBell,
+  FiUser,
+  FiKey,
+  FiSignIn,
+  FiUserPlus,
 } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
@@ -226,7 +230,6 @@ const HomePage = () => {
     setCurrentPage((prev) => Math.min(prev + 1, totalPages));
   };
 
-
   // Cuộn danh mục
   const scrollCategories = (direction) => {
     if (categoriesRef.current) {
@@ -248,7 +251,6 @@ const HomePage = () => {
   const calculateDiscount = (originalPrice, salePrice) => {
     return Math.round(((originalPrice - salePrice) / originalPrice) * 100);
   };
-
 
   return (
     <div className="min-h-screen">
@@ -277,6 +279,31 @@ const HomePage = () => {
 
         <div className="max-w-[95%] mx-auto px-4">
           <HeroBanner />
+
+          {/* Navigation Buttons - Từ nhánh huy */}
+          <div className="mb-8">
+            <div className="flex flex-wrap justify-center gap-4">
+              <Link to="/login" className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm">
+                <FiSignIn className="mr-2" />
+                Login
+              </Link>
+              
+              <Link to="/register" className="flex items-center px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm">
+                <FiUserPlus className="mr-2" />
+                Register
+              </Link>
+              
+              <Link to="/profile" className="flex items-center px-6 py-3 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors shadow-sm">
+                <FiUser className="mr-2" />
+                Profile
+              </Link>
+              
+              <Link to="/verify-pin" className="flex items-center px-6 py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors shadow-sm">
+                <FiKey className="mr-2" />
+                Verify PIN
+              </Link>
+            </div>
+          </div>
 
           {/* Xu hướng tìm kiếm */}
           <div className="mb-8">
@@ -570,6 +597,44 @@ const HomePage = () => {
                 </button>
               </div>
             )}
+          </div>
+
+          {/* Order Management Section - Từ nhánh huy */}
+          <div className="mb-12">
+            <h3 className="text-2xl font-bold text-center mb-8 text-gray-800">Order Management</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Link to="/order-history" className="block group">
+                <div className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow duration-300 border border-gray-100">
+                  <div className="flex items-center">
+                    <FiClock className="text-blue-500 text-3xl mr-4" />
+                    <div>
+                      <h4 className="font-semibold text-lg text-gray-900 group-hover:text-blue-600 transition-colors">
+                        Order History
+                      </h4>
+                      <p className="text-gray-600 mt-1">
+                        View and track all your orders
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+              
+              <Link to="/return-requests" className="block group">
+                <div className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow duration-300 border border-gray-100">
+                  <div className="flex items-center">
+                    <FiRefreshCw className="text-red-500 text-3xl mr-4" />
+                    <div>
+                      <h4 className="font-semibold text-lg text-gray-900 group-hover:text-red-600 transition-colors">
+                        Return Requests
+                      </h4>
+                      <p className="text-gray-600 mt-1">
+                        Manage your product return requests
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            </div>
           </div>
         </div>
         <div className="mt-10 text-white">

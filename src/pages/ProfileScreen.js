@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
 import axios from "axios";
@@ -406,6 +406,29 @@ const ProfileScreen = () => {
   return (
     <div className="container-fluid px-4 mt-4">
       <hr className="mt-0 mb-4" />
+      
+      {/* Navigation Buttons */}
+      <div className="row mb-4">
+        <div className="col-12">
+          <div className="d-flex justify-content-between align-items-center">
+            <h2 className="mb-0">
+              <i className="fas fa-user me-2"></i>
+              User Profile
+            </h2>
+            <div className="d-flex gap-2">
+              <Link to="/order-history" className="btn btn-secondary">
+                <i className="fas fa-shopping-bag me-2"></i>
+                Order History
+              </Link>
+              <Link to="/" className="btn btn-outline-primary">
+                <i className="fas fa-home me-2"></i>
+                Home
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="row">
         <Formik
           initialValues={initialValues}

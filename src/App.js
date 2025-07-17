@@ -11,6 +11,10 @@ import ProductDetail from "./pages/ProductScreen";
 import SearchResults from "./pages/SearchScreen";
 import CheckoutScreen from "./pages/CheckoutScreen";
 import OrderSuccessScreen from "./pages/OrderSuccessScreen";
+import OrderHistoryScreen from "./pages/OrderHistoryScreen";
+import OrderDetailsScreen from "./pages/OrderDetailsScreen";
+import ReturnRequestScreen from "./pages/ReturnRequestScreen";
+import ReturnRequestDetailsScreen from "./pages/ReturnRequestDetailsScreen";
 
 import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/cartContext";
@@ -41,6 +45,10 @@ function App() {
             <Route path="/search" element={<SearchResults />} />
             <Route path="/checkout" element={<CheckoutScreen />} />
             <Route path="/success" element={<OrderSuccessScreen />} />
+            <Route path="/order-history" element={<OrderHistoryScreen />} />
+            <Route path="/order-details/:orderId" element={<OrderDetailsScreen />} />
+            <Route path="/return-requests" element={<ReturnRequestScreen />} />
+            <Route path="/return-requests/:requestId" element={<ReturnRequestDetailsScreen />} />
           </Routes>
         </CartProvider>
       </AuthProvider>
