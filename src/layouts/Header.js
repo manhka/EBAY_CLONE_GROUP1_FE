@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Search, Loader2, ChevronDown, X } from "lucide-react";
+import { Search, ChevronDown, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import apiInterceptor from "../services/apiInterceptor";
 
-export default function MainHeader() {
+function MainHeader() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("0");
@@ -125,3 +125,5 @@ export default function MainHeader() {
     </div>
   );
 }
+
+export default MainHeader;

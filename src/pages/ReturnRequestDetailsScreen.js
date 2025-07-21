@@ -116,7 +116,7 @@ const ReturnRequestDetailsScreen = () => {
   };
 
   const handleBackToList = () => {
-    navigate("/return-requests");
+    navigate(-1);
   };
 
   const handleViewOrder = () => {

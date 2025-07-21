@@ -2,25 +2,16 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import {
   FiSearch,
   FiHeart,
-  FiChevronDown,
   FiChevronRight,
   FiChevronLeft,
   FiClock,
-  FiTag,
-  FiStar,
-  FiArrowRight,
-  FiArrowLeft,
-  FiGrid,
-  FiList,
-  FiFilter,
   FiRefreshCw,
   FiTrendingUp,
   FiShoppingCart,
-  FiBell,
   FiUser,
   FiKey,
-  FiSignIn,
-  FiUserPlus,
+  FiLogIn,
+  FiUsers,
 } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
@@ -56,24 +47,18 @@ const HomePage = () => {
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [featuredProducts, setFeaturedProducts] = useState([]);
   const [viewMode, setViewMode] = useState("grid");
 
   // State bổ sung cho UI nâng cao
   const [sortBy, setSortBy] = useState("featured");
-  const [showFilters, setShowFilters] = useState(false);
   const [priceRange, setPriceRange] = useState([0, 1000]);
   const [wishlist, setWishlist] = useState([]);
-  const [isSticky, setIsSticky] = useState(false);
-  const [itemsPerPage, setItemsPerPage] = useState(12);
+  const [itemsPerPage] = useState(12);
   const [showNotification, setShowNotification] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState("");
-  const [recentlyViewed, setRecentlyViewed] = useState([]);
 
-  const bannerRef = useRef(null);
-  const categoriesRef = useRef(null);
-  const filtersRef = useRef(null);
-  const intervalRef = useRef(null); // Thêm ref để quản lý interval của banner
+  // const categoriesRef = useRef(null);
+  // const filtersRef = useRef(null);
 
   // Fetch dữ liệu từ API
   useEffect(() => {
@@ -91,10 +76,10 @@ const HomePage = () => {
         setCategories(categoriesData);
 
         // Set some random products as featured
-        const randomProducts = [...productsData]
-          .sort(() => 0.5 - Math.random())
-          .slice(0, 4);
-        setFeaturedProducts(randomProducts);
+        // const randomProducts = [...productsData]
+        //   .sort(() => 0.5 - Math.random())
+        //   .slice(0, 4);
+        // setFeaturedProducts(randomProducts);
 
         setLoading(false);
       } catch (error) {
@@ -112,16 +97,16 @@ const HomePage = () => {
   }, [selectedCategory]);
 
   // Xử lý sticky header
-  useEffect(() => {
-    const handleScroll = () => {
-      if (filtersRef.current) {
-        setIsSticky(window.scrollY > filtersRef.current.offsetTop);
-      }
-    };
+  // useEffect(() => {
+  //   const handleScroll = () => {
+  //     if (filtersRef.current) {
+  //       setIsSticky(window.scrollY > filtersRef.current.offsetTop);
+  //     }
+  //   };
 
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  //   window.addEventListener("scroll", handleScroll);
+  //   return () => window.removeEventListener("scroll", handleScroll);
+  // }, []);
 
   // Filter products by category
   const filteredProducts = useMemo(() => {
@@ -211,11 +196,11 @@ const HomePage = () => {
   };
 
   // Xử lý xem sản phẩm
-  const handleViewProduct = (product) => {
-    if (!recentlyViewed.some((item) => item.id === product.id)) {
-      setRecentlyViewed((prev) => [product, ...prev].slice(0, 4));
-    }
-  };
+  // const handleViewProduct = (product) => {
+  //   if (!recentlyViewed.some((item) => item.id === product.id)) {
+  //     setRecentlyViewed((prev) => [product, ...prev].slice(0, 4));
+  //   }
+  // };
 
   // Chuyển trang
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
@@ -231,26 +216,26 @@ const HomePage = () => {
   };
 
   // Cuộn danh mục
-  const scrollCategories = (direction) => {
-    if (categoriesRef.current) {
-      const scrollAmount = direction === "left" ? -300 : 300;
-      categoriesRef.current.scrollBy({
-        left: scrollAmount,
-        behavior: "smooth",
-      });
-    }
-  };
+  // const scrollCategories = (direction) => {
+  //   if (categoriesRef.current) {
+  //     const scrollAmount = direction === "left" ? -300 : 300;
+  //     categoriesRef.current.scrollBy({
+  //       left: scrollAmount,
+  //       behavior: "smooth",
+  //     });
+  //   }
+  // };
 
   // Tính giá giảm giá (giả định giảm 10-30%)
-  const calculateSalePrice = (price) => {
-    const discount = Math.floor(Math.random() * 20) + 10; // 10-30%
-    return ((price * (100 - discount)) / 100).toFixed(2);
-  };
+  // const calculateSalePrice = (price) => {
+  //   const discount = Math.floor(Math.random() * 20) + 10; // 10-30%
+  //   return ((price * (100 - discount)) / 100).toFixed(2);
+  // };
 
   // Tính phần trăm giảm giá
-  const calculateDiscount = (originalPrice, salePrice) => {
-    return Math.round(((originalPrice - salePrice) / originalPrice) * 100);
-  };
+  // const calculateDiscount = (originalPrice, salePrice) => {
+  //   return Math.round(((originalPrice - salePrice) / originalPrice) * 100);
+  // };
 
   return (
     <div className="min-h-screen">
@@ -284,12 +269,12 @@ const HomePage = () => {
           <div className="mb-8">
             <div className="flex flex-wrap justify-center gap-4">
               <Link to="/login" className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm">
-                <FiSignIn className="mr-2" />
+                <FiLogIn className="mr-2" />
                 Login
               </Link>
               
               <Link to="/register" className="flex items-center px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm">
-                <FiUserPlus className="mr-2" />
+                <FiUsers className="mr-2" />
                 Register
               </Link>
               

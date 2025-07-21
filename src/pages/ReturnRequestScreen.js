@@ -140,10 +140,18 @@ const ReturnRequestScreen = () => {
   return (
     <div className="return-request-container">
       <div className="return-request-header">
-        <h1 className="return-request-title">
-          <i className="fas fa-undo-alt me-2"></i>
-          Yêu cầu hoàn trả
-        </h1>
+        <div>
+          <button 
+            className="btn btn-outline-primary me-3"
+            onClick={() => navigate(-1)}
+          >
+            <i className="fas fa-arrow-left"></i> Quay lại
+          </button>
+          <h1 className="return-request-title d-inline">
+            <i className="fas fa-undo-alt me-2"></i>
+            Yêu cầu hoàn trả
+          </h1>
+        </div>
         <div className="return-request-filters">
           <select
             className="form-select"

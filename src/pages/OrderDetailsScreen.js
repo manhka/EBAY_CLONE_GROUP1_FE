@@ -120,7 +120,7 @@ const OrderDetailsScreen = () => {
         </div>
         <button 
           className="btn btn-primary mt-3"
-          onClick={() => navigate('/order-history')}
+          onClick={() => navigate(-1)}
         >
           <i className="fas fa-arrow-left"></i> Quay lại danh sách
         </button>
@@ -147,7 +147,7 @@ const OrderDetailsScreen = () => {
         <div>
           <button 
             className="btn btn-outline-primary me-3"
-            onClick={() => navigate('/order-history')}
+            onClick={() => navigate(-1)}
           >
             <i className="fas fa-arrow-left"></i> Quay lại
           </button>
